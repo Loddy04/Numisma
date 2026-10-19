@@ -9,7 +9,7 @@
 | Mata kuliah | Pemrograman Aplikasi Mobile |
 | Pengerjaan | Individu |
 | Penyusun | [Nama] / [NIM] |
-| Versi dokumen | 1.0 (19 Oktober 2026) |
+| Versi dokumen | 1.1 (19 Oktober 2026) |
 | Hari 1 | Senin, 19 Oktober 2026 |
 | Tenggat | Hari ke-7 = Minggu, 25 Oktober 2026 (konfirmasi ke dosen bila hitungan berbeda) |
 | Rencana | Hari 1-5 aplikasi, hari 6-7 laporan dan PPT |
@@ -31,7 +31,7 @@
 3. Flutter (Dart), target **Android**. State management: `setState` saja. Tidak ada Provider, Bloc, atau Riverpod.
 4. **Satu file per fitur**, fungsi kecil, dan **komentar bahasa Indonesia yang menjelaskan alasan** kode ditulis begitu. Kode harus mudah dijelaskan oleh mahasiswa saat presentasi.
 5. **Nama tabel dan kolom di Bagian 5 adalah kontrak.** Jangan diubah tanpa persetujuan pemilik proyek. Tanda tangan fungsi di Bagian 8 juga kontrak.
-6. **Rahasia (API key, URL Supabase) lewat `--dart-define`**, tidak ditulis di kode dan tidak di-commit.
+6. **Rahasia (API key, URL Supabase) lewat file `.env` (paket `flutter_dotenv`)**, tidak ditulis di kode dan tidak di-commit (lihat Bagian 3).
 7. **Nama model Gemini tidak boleh ditulis permanen di kode.** Ambil dari daftar model lewat API, simpan di config (Bagian 6.2).
 8. **Jangan mengarang** endpoint, nama field API, atau versi paket. Verifikasi di dokumentasi resmi. Kalau tidak yakin, tulis "belum diverifikasi" dan beri cara mengecek.
 9. **Jangan menyalin nomor versi paket dari ingatan.** Pasang dengan `flutter pub add <paket>` agar mendapat versi terbaru yang kompatibel, lalu commit `pubspec.lock`.
@@ -84,7 +84,7 @@ Foto koin (kamera atau galeri) → AI membaca gambar → hasil muncul di form ya
 | Tampilan koin | Animasi 2D (flip dan tilt) |
 | Sinkronisasi | Satu arah per tombol (Unggah, Pulihkan), tanpa penyelesaian konflik. Kunci sinkron = username, tanpa autentikasi online. Foto tidak ikut tersinkron |
 | Keamanan Supabase | Anon key tertanam di aplikasi dan kebijakan akses dibuat permisif untuk demo |
-| Gemini | Key tertanam di aplikasi (bisa diekstrak dari APK). Pakai key khusus proyek, hapus setelah penilaian |
+| Gemini | Key tertanam di aplikasi lewat `.env` yang dibundel sebagai asset APK (bisa diekstrak dengan `unzip` pada APK rilis). Pakai key khusus proyek, hapus setelah penilaian |
 
 ---
 
@@ -147,6 +147,7 @@ Semua paket dipasang dengan `flutter pub add <nama>` (versi terbaru yang kompati
 | DB lokal | `sqflite`, `path`, `path_provider` | |
 | DB online | `supabase_flutter` | Hanya sebagai database. **Tanpa Supabase Auth** |
 | Session dan preferensi | `shared_preferences` | |
+| Rahasia / key | `flutter_dotenv` | Baca Bagian 3.1. File `.env` di-gitignore |
 | Hash password | `bcrypt` (alternatif: PBKDF2 lewat paket `cryptography`) | Verifikasi paket di pub.dev. Jangan memakai SHA-256 polos untuk password |
 | Enkripsi data | `encrypt` (AES), `flutter_secure_storage` (simpan kunci AES) | IV acak per enkripsi, disimpan bersama ciphertext |
 | Hash chain | `crypto` (SHA-256) | |
@@ -167,14 +168,44 @@ Semua paket dipasang dengan `flutter pub add <nama>` (versi terbaru yang kompati
 - `flutter_local_notifications` biasanya meminta *core library desugaring*; ikuti README paketnya.
 - Notifikasi Android 13+ perlu izin `POST_NOTIFICATIONS` saat runtime.
 
-**Menjalankan aplikasi:**
-```
-flutter run \
-  --dart-define=GEMINI_API_KEY=xxxx \
-  --dart-define=SUPABASE_URL=https://xxxx.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=xxxx
-```
-Baca nilainya di `core/config.dart` dengan `String.fromEnvironment`. Simpan perintah ini di catatan pribadi, **jangan di-commit** bersama key aslinya.
+### 3.1 Rahasia lewat `.env`
+
+Key dan URL **tidak** ditulis di kode dan **tidak** di-commit.
+
+1. Pasang paket:
+   ```
+   flutter pub add flutter_dotenv
+   ```
+2. Buat file `.env` di root proyek (sejajar `pubspec.yaml`):
+   ```
+   GEMINI_API_KEY=xxxx
+   SUPABASE_URL=https://xxxx.supabase.co
+   SUPABASE_ANON_KEY=xxxx
+   ```
+3. Daftarkan sebagai asset di `pubspec.yaml`:
+   ```yaml
+   flutter:
+     assets:
+       - .env
+   ```
+4. Tambahkan ke `.gitignore` **sebelum commit pertama**, dan commit `.env.example` (sama persis tapi nilainya kosong) sebagai contoh untuk yang lain:
+   ```
+   .env
+   ```
+5. Muat di awal `main.dart`, sebelum `runApp` dan sebelum inisialisasi Supabase:
+   ```dart
+   await dotenv.load(fileName: ".env");
+   ```
+6. Baca di `core/config.dart`:
+   ```dart
+   final geminiApiKey = dotenv.env['GEMINI_API_KEY']!;
+   final supabaseUrl = dotenv.env['SUPABASE_URL']!;
+   final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY']!;
+   ```
+   Karena nilainya dibaca saat runtime (bukan `const`), `main()` harus `async` dan inisialisasi `main.dart` menunggu `dotenv.load` selesai sebelum memakai nilai-nilai ini.
+7. `.env` didaftarkan sebagai asset, jadi **ikut terbundel otomatis** saat `flutter build apk` — tidak perlu flag tambahan saat build rilis untuk demo.
+
+**Catatan keamanan (tulis di laporan, Bagian 1.6):** karena didaftarkan sebagai asset, `.env` ada sebagai file teks biasa di dalam APK dan bisa dibaca langsung dengan `unzip app.apk` tanpa alat khusus. Ini sebabnya dipakai key khusus proyek yang dihapus setelah penilaian, bukan key pribadi/produksi.
 
 ---
 
@@ -198,13 +229,15 @@ Aturan alur: **screen → service → db_helper**. Layar tidak boleh memanggil d
 ### 4.2 Struktur folder
 ```
 numisma/
+  .env                        # TIDAK di-commit (lihat Bagian 3.1)
+  .env.example                # Di-commit, nilai kosong
   assets/seed/  coins_seed.json  events_seed.json  spots_seed.json
   lib/
-    main.dart                  # inisialisasi (db, supabase, notifikasi, timezone)
+    main.dart                  # inisialisasi (dotenv, db, supabase, notifikasi, timezone)
     app.dart                   # tema, rute
     theme.dart                 # warna, font, gaya kartu (satu tempat)
     core/
-      config.dart              # String.fromEnvironment untuk key
+      config.dart              # baca key dari dotenv.env
       db_helper.dart           # buka SQLite, buat tabel, seed
       session_store.dart       # shared_preferences: user_id, token, expires_at
       crypto_util.dart         # bcrypt, AES, SHA-256
@@ -422,7 +455,7 @@ Format di Lampiran C. Isi:
 - Mata uang lama yang sudah tidak berlaku (mis. mark Jerman, gulden Belanda) tidak ada di daftar. **Opsional:** tabel kecil kurs tetap konversi ke euro (cek angkanya di sumber resmi ECB sebelum dipakai). Versi minimum: tampilkan "nilai tidak tersedia".
 
 ### 6.2 Gemini API (REST)
-- **Akses:** `http`, header `x-goog-api-key`. Key dari AI Studio, lewat `--dart-define`. Tanpa SDK.
+- **Akses:** `http`, header `x-goog-api-key`. Key dari AI Studio, dibaca dari `.env` (Bagian 3.1). Tanpa SDK.
 - **Daftar model:** `GET https://generativelanguage.googleapis.com/v1beta/models`. Pilih model varian **Flash atau Flash-Lite** yang mendukung `generateContent`, simpan namanya di `shared_preferences` (kunci `gemini_model`). Bila gagal, pakai nama model terakhir yang tersimpan.
 - **Generate:** `POST https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent`. Isi: teks prompt + gambar `inline_data` (mime `image/jpeg`, data base64) dan meminta keluaran JSON.
 - **Belum diverifikasi:** penulisan field persis (snake_case atau camelCase, `systemInstruction`, `responseMimeType`). **Cek dokumentasi resmi (ai.google.dev) dan uji dengan satu foto di AI Studio sebelum menulis kode.**
@@ -433,7 +466,7 @@ Format di Lampiran C. Isi:
 - Prompt ada di Lampiran B.
 
 ### 6.3 Supabase
-- Inisialisasi `supabase_flutter` dengan `SUPABASE_URL` dan `SUPABASE_ANON_KEY`.
+- Inisialisasi `supabase_flutter` dengan `SUPABASE_URL` dan `SUPABASE_ANON_KEY` dari `.env` (Bagian 3.1).
 - Pola pakai: `supabase.from('coins').upsert(...)`, `supabase.from('collector_spots').select()`.
 - Hanya sebagai database. Tanpa Auth dan Storage.
 
@@ -755,7 +788,7 @@ Judul dan identitas · Masalah dan tema · Fitur ringkas · Arsitektur · Tech s
 | Dosen menafsirkan "enkripsi" secara ketat | Poin K2 dipertanyakan | bcrypt + AES, jelaskan bedanya di laporan |
 | Dosen mengharapkan API buatan sendiri | Poin K5 dipertanyakan | Tanyakan ke dosen; bila ya, tambah backend kecil (setengah hari), `sync_service` tinggal diganti |
 | Build error atau konflik versi paket | Waktu habis | Commit `pubspec.lock`, commit per fitur, jangan upgrade paket di tengah jalan |
-| API key bocor | Penyalahgunaan | `--dart-define`, jangan commit, key khusus proyek, hapus setelah penilaian |
+| `.env` ter-commit atau ikut terunggah tanpa sengaja | Key bocor/disalahgunakan | `.gitignore` sebelum commit pertama, commit `.env.example` kosong, key khusus proyek, hapus setelah penilaian |
 | Waktu laporan kurang | Terlambat | Catat bahan laporan tiap fitur, kerangka sejak hari 1 |
 | Tenggat percetakan | Tidak bisa cetak | Selesaikan laporan hari 6 |
 
@@ -776,7 +809,7 @@ Judul dan identitas · Masalah dan tema · Fitur ringkas · Arsitektur · Tech s
 ### 13.2 Belum diverifikasi (cek sebelum dipakai)
 - Bentuk JSON respons Frankfurter v2 dan batas lajunya.
 - Penulisan field persis request Gemini REST dan pemakaian prompt sistem.
-- Nama method versi terbaru: `sensors_plus`, `local_auth`, `flutter_local_notifications`, `supabase_flutter`, `flutter_map`, `bcrypt`, `encrypt`.
+- Nama method versi terbaru: `sensors_plus`, `local_auth`, `flutter_local_notifications`, `supabase_flutter`, `flutter_map`, `bcrypt`, `encrypt`, `flutter_dotenv`.
 - Kebijakan RLS Supabase untuk anon key.
 - Keberadaan dan lokasi spot kolektor (harus diverifikasi sendiri).
 - Kebutuhan `minSdk` dan desugaring yang tepat untuk set paket ini.
@@ -800,6 +833,7 @@ Judul dan identitas · Masalah dan tema · Fitur ringkas · Arsitektur · Tech s
 - Numista API (tidak dipakai): https://en.numista.com/api/index.php
 - Landasan teori numismatik (DJKN): https://www.djkn.kemenkeu.go.id/artikel/baca/13914/Numismatik-Hobi-Sekaligus-Belajar-Sejarah-dan-Berinvestasi.html
 - Paket Flutter: https://pub.dev (cari nama paket pada Bagian 3)
+- `flutter_dotenv`: https://pub.dev/packages/flutter_dotenv
 
 ---
 
@@ -809,7 +843,7 @@ Judul dan identitas · Masalah dan tema · Fitur ringkas · Arsitektur · Tech s
 Konteks: proyek Numisma (Flutter). Panduan lengkap terlampir (NUMISMA_GUIDE.md).
 Tugas: implementasikan fitur [K7a: konversi kurs] sesuai Bagian 7.7 dan kontrak service Bagian 8.
 Batasan:
-- Ikuti aturan wajib Bagian 0.2 (tanpa Firebase, setState saja, komentar Indonesia).
+- Ikuti aturan wajib Bagian 0.2 (tanpa Firebase, setState saja, komentar Indonesia, rahasia lewat .env).
 - Jangan ubah skema Bagian 5 atau nama fungsi Bagian 8.
 - Hanya buat atau ubah file: services/rates_service.dart, screens/convert/convert_screen.dart.
 Output yang diminta:
