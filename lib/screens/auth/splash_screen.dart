@@ -1,4 +1,4 @@
-// screens/auth/splash_screen.dart
+﻿// screens/auth/splash_screen.dart
 // Layar pertama yang dilihat pengguna. Tugasnya cuma satu: cek
 // apakah ada session yang masih valid, lalu pindah ke Home atau
 // Login. Tidak ada UI rumit di sini karena durasinya sangat singkat.
@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../home/home_shell.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -33,12 +34,9 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (user != null) {
-      // TODO (Hari 2): ganti ke HomeShell begitu bottom nav dibuat.
-      // Untuk sekarang tampilkan pesan sementara supaya tetap bisa
-      // diuji alurnya (lihat T05 di Bagian 10 panduan).
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => _TemporaryHomePlaceholder(username: user.username),
+          builder: (_) => HomeShell(username: user.username),
         ),
       );
     } else {
@@ -64,44 +62,6 @@ class _SplashScreenState extends State<SplashScreen> {
             CircularProgressIndicator(),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// Placeholder sementara pengganti HomeShell (Bagian 4.3) yang baru
-// dibuat Hari 2. Dipakai supaya target "tetap login setelah tutup
-// aplikasi" (T05) sudah bisa dibuktikan hari ini juga.
-// Tombol logout disertakan lebih awal supaya T21 juga bisa dites
-// manual sebelum bottom nav sungguhan ada.
-class _TemporaryHomePlaceholder extends StatelessWidget {
-  final String username;
-  const _TemporaryHomePlaceholder({required this.username});
-
-  @override
-  Widget build(BuildContext context) {
-    final authService = AuthService();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Numisma'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: () async {
-              await authService.logout();
-              if (!context.mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
-              );
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Text('Halo, $username! (sudah login, sesuai session)'),
       ),
     );
   }

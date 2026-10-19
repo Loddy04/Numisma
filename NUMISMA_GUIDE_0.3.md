@@ -124,11 +124,11 @@ Pengguna mengonfirmasi bahwa **semua poin di atas wajib**.
 | K3 | Login biometrik | `local_auth` (sidik jari), aktif dari Profil | Layar login, T06-T07 | 7.3 |
 | K4 | DB lokal dan online | SQLite + Supabase (Unggah dan Pulihkan) | Tabel di kedua DB, T18 | 7.4 |
 | K5 | Web service/API + LBS | Frankfurter, Gemini, Supabase REST; LBS spot kolektor | Panggilan API di laporan, peta, T19 | 6, 7.5 |
-| K6 | Bottom nav: profil (gambar), saran-kesan, logout | 6 tab; foto profil; form saran dan kesan; dialog logout | Screenshot tiap tab, T21 | 7.6 |
+| K6 | Bottom nav: profil (gambar), saran-kesan, logout | 5 ikon (Beranda grid, Profil, Scan tengah, Saran & Kesan, Keluar); foto profil; form saran dan kesan; dialog logout | Screenshot tiap tab, T21 | 7.6 |
 | K7 | Konversi uang (min. 3) dan waktu (4 zona), terpadu konsep | Kurs 8 mata uang + Nilai Koleksi; jam dunia WIB/WITA/WIT/London + jadwal acara kolektor | T10, T11 | 7.7 |
-| K8 | Minimal 2 sensor | Accelerometer (goyang = flip koin), gyroscope (tilt kartu koin). GPS dihitung terpisah untuk LBS | T12, T13 | 7.8 |
+| K8 | Minimal 2 sensor | Accelerometer (goyang = Coin Flip, mini-toy terpisah), gyroscope (tilt pada foto item koleksi asli, koin/uang kertas). GPS dihitung terpisah untuk LBS | T12, T13 | 7.8 |
 | K9 | AI dan LLM | Gemini Vision (scan koin) dan chatbot "Tanya Numisma" | T14, T15 | 7.9 |
-| K10 | Mini game | "Tebak Asal Koin" (10 soal) | T16 | 7.10 |
+| K10 | Mini game | "Tebak Asal Koin" (10 soal) + "Coin Flip" (goyang HP, head/tail random) | T16 | 7.10 |
 | K11 | Pencarian dan pemilihan | Cari, filter, urut, multi-pilih di Koleksi | T09 | 7.11 |
 | K12 | Notifikasi mobile | Notifikasi lokal pengingat acara + tombol uji | T20, T24 | 7.12 |
 | K13 | Blockchain sederhana | Jejak Catatan: hash chain SHA-256 + proof-of-work ringan + verifikasi | T17, T18 | 7.13 |
@@ -250,7 +250,7 @@ numisma/
       spot_service.dart        game_service.dart
     screens/
       auth/        splash_screen.dart  login_screen.dart  register_screen.dart
-      home/        home_shell.dart                # BottomNavigationBar
+      home/        home_shell.dart                # bottom nav custom 5 ikon + grid Beranda
       collection/  collection_screen.dart  coin_form_screen.dart  coin_detail_screen.dart
       scan/        scan_screen.dart
       chain/       chain_screen.dart              # Jejak Catatan
@@ -264,18 +264,22 @@ numisma/
 ```
 
 ### 4.3 Navigasi
-`Splash` (cek session) → `Login` atau `Register` → `HomeShell` dengan 6 tab:
 
-| Tab | Isi |
-|---|---|
-| Koleksi | Daftar koleksi, cari dan filter, total nilai. Tombol: Tambah, Scan AI, Jejak Catatan, Tanya Numisma, Game, Sinkron |
-| Konversi | Dua sub-tab: Kurs dan Nilai Koleksi, Jam Dunia dan Acara |
-| Jelajah | Peta dan spot kolektor |
-| Profil | Foto, data, switch biometrik |
-| Saran | Saran dan kesan mata kuliah |
-| Keluar | Dialog konfirmasi logout (tab ini tidak punya halaman; `onTap` memunculkan dialog dan indeks tab tidak berubah) |
+> **Keputusan yang menyimpang dari rancangan awal (dicatat sesuai Bagian 0, aturan kejujuran laporan):** panduan versi awal memakai bottom nav 6 tab datar (Koleksi, Konversi, Jelajah, Profil, Saran, Keluar). Setelah didiskusikan ulang Hari 2, desain ini dianggap terlalu padat dan tidak menonjolkan fitur utama (Scan). Diganti dengan **bottom nav 5 ikon bergaya "home-screen smartphone"**: satu tab Beranda berisi grid ikon fitur pendukung, Scan jadi ikon tengah yang menonjol (aksi cepat), dan tiga ketentuan dosen (K6: Profil, Saran & Kesan, Logout) tetap tampil **literal** sebagai ikon bottom nav — tidak hilang, hanya susunannya berubah.
 
-Bila enam tab terasa sesak di HP, fallback: gabungkan Konversi menjadi sub-tab dalam Koleksi.
+`Splash` (cek session) → `Login` atau `Register` → `HomeShell` dengan **5 ikon bottom nav**:
+
+| Posisi | Ikon | Isi / aksi |
+|---|---|---|
+| 1 | **Beranda** | Grid ikon fitur pendukung (seperti halaman app launcher HP): Koleksi, Konversi, Jelajah, Jejak Catatan, Tanya Numisma, Game, Sinkron. Tiap ikon membuka halaman masing-masing fitur |
+| 2 | **Profil** | Foto, data, switch biometrik |
+| 3 | **Scan** (tengah, dibuat lebih besar/menonjol secara visual — bukan `BottomNavigationBar` bawaan, perlu widget custom) | Aksi cepat: langsung membuka `scan_screen.dart` (pilih kamera/galeri → identifikasi AI). Bukan tab dengan halaman riwayat — ditekan, langsung aksi |
+| 4 | **Saran** | Saran dan kesan mata kuliah |
+| 5 | **Keluar** | Dialog konfirmasi logout (tidak punya halaman; `onTap` memunculkan dialog dan indeks tab aktif tidak berubah) |
+
+**Implementasi bottom nav:** karena ikon ke-3 (Scan) harus tampak menonjol (ukuran lebih besar / bentuk lingkaran terangkat dari garis bottom nav), ini **tidak bisa** dibuat dari `BottomNavigationBar` bawaan Flutter apa adanya. Gunakan `Stack` berisi `Row` 4 ikon biasa (Beranda, Profil, [spasi kosong di tengah], Saran, Keluar) ditumpuk dengan satu `Positioned` tombol bulat (Scan) yang sedikit naik ke atas garis nav — mirip pola tombol kamera di aplikasi Instagram/TikTok. Detail widget dirancang saat implementasi `home_shell.dart` (Hari 2), tidak mengubah kontrak service di Bagian 8.
+
+Grid Beranda cukup `GridView` sederhana (`crossAxisCount: 3` atau `4`), tiap item ikon besar + label singkat di bawahnya, `onTap` membuka halaman fitur terkait lewat `Navigator.push` biasa — bukan tab baru di bottom nav.
 
 ### 4.4 State dan session
 - State UI: `setState`. Data dimuat ulang dari service saat layar dibuka.
@@ -311,8 +315,8 @@ CREATE TABLE coins (
   buy_price REAL,
   buy_currency TEXT,
   notes_enc TEXT,                   -- AES (catatan pengguna)
-  photo_path TEXT,
-  ai_summary TEXT,
+  photo_path TEXT,                  -- ada/tidaknya foto, independen dari apakah AI memprosesnya
+  ai_summary TEXT,                  -- NULL = koin ini belum/tidak pernah dianalisis AI (manual, dengan atau tanpa foto)
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   is_synced INTEGER NOT NULL DEFAULT 0
@@ -328,7 +332,7 @@ CREATE TABLE chain_blocks (
   action TEXT NOT NULL,             -- GENESIS / ADD / UPDATE / DELETE
   data_hash TEXT NOT NULL,          -- SHA-256 snapshot koin (lihat 7.13)
   photo_hash TEXT,                  -- SHA-256 byte foto, bila ada
-  photo_source TEXT,                -- camera / gallery / none
+  photo_source TEXT,                -- camera / gallery / none -- asal foto, independen dari apakah AI memprosesnya
   prev_hash TEXT NOT NULL,
   nonce INTEGER NOT NULL,
   hash TEXT NOT NULL,
@@ -550,16 +554,21 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
 - **File:** `rates_service.dart`, `time_util.dart`, `event_repo.dart`, `convert_screen.dart`.
 
 ### 7.8 K8 — Dua sensor
-| Sensor | Penggunaan |
-|---|---|
-| Accelerometer | Goyang HP → koin di layar detail berputar (flip 2D). Dipakai juga untuk mode Coin Flip |
-| Gyroscope | Kemiringan atau rotasi HP menggeser kartu koin (efek tilt/parallax) di layar detail |
+
+> **Keputusan (Hari 2):** dua sensor ini **dipisah perannya** supaya tidak ada masalah "foto sisi satunya dari mana" (koin/uang kertas di koleksi cuma punya satu foto per item, lihat Bagian 5.1 dan 7.9a).
+
+| Sensor | Dipakai di | Objek | Efek |
+|---|---|---|---|
+| **Gyroscope** | `coin_detail_screen.dart` — item koleksi **asli** milik pengguna (koin **maupun** uang kertas, keduanya sama-sama baris di tabel `coins` dengan `type` berbeda) | Foto asli yang sama (satu-satunya yang tersimpan) | Kemiringan/rotasi HP menggeser tampilan (efek tilt/parallax) — **bukan** mengungkap sisi lain, cuma melihat foto yang sama dari "sudut" berbeda, jadi aman walau cuma satu foto |
+| **Accelerometer** | **Coin Flip** — mini-fitur mandiri, **tidak terikat** koin koleksi tertentu (lihat 7.10) | Widget generik `widgets/coin_face.dart` (lingkaran polos, tanpa gambar berlisensi) | Goyang HP → animasi berputar cepat → berhenti random di Head/Tail, seperti lempar koin fisik |
+
+**Catatan — scan juga berlaku untuk uang kertas:** perlu digarisbawahi, fitur Scan AI (7.9a) dan efek gyroscope tilt di atas **sama-sama berlaku untuk kedua jenis item** — koin maupun uang kertas — karena keduanya disimpan di tabel yang sama (`coins`, kolom `type IN ('coin','banknote')`) dan prompt Gemini (Lampiran B.1) sudah meminta AI menentukan `type` sendiri dari foto. Tidak ada jalur terpisah untuk uang kertas; satu alur scan dan satu alur tampilan detail berlaku untuk keduanya.
 
 - Deteksi goyang: besar percepatan melewati ambang (mulai coba sekitar 15 m/s²) dengan jeda 1 detik. Sesuaikan lewat uji di HP.
 - Batalkan langganan stream sensor di `dispose`.
 - GPS dipakai untuk LBS (7.5) dan dihitung terpisah dari dua sensor ini.
 - **Selesai bila:** T12, T13.
-- **File:** `coin_detail_screen.dart`, `widgets/coin_face.dart`.
+- **File:** `coin_detail_screen.dart` (gyroscope), `game_screen.dart` (accelerometer, lihat 7.10), `widgets/coin_face.dart`.
 
 ### 7.9 K9 — AI dan LLM
 **a. Scan koin (AI Vision)** — `scan_screen.dart`
@@ -569,15 +578,36 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
 4. Pengguna konfirmasi → simpan koin + tambah blok rantai (`photo_source` = camera atau gallery).
 5. Gagal (kuota, jaringan, JSON tidak valid) → pesan ramah + isi manual + tombol "Gunakan hasil contoh".
 
-**b. Chatbot "Tanya Numisma" (LLM)** — `chat_screen.dart`
-- Tanya jawab numismatik dengan prompt sistem Lampiran B.2. Riwayat percakapan di memori selama sesi (kirim maksimal 10 pesan terakhir).
-- **Selesai bila:** T14, T15.
-- **File:** `gemini_service.dart`.
+**Catatan — tiga jalur menambah koin:** scan bukan satu-satunya cara. Tombol **"Tambah"** di tab Koleksi (beda dari tombol "Scan AI") membuka `coin_form_screen.dart` untuk diisi **manual**: semua field (negara, nominal, tahun, dst) diisi sendiri oleh pengguna, **tanpa** dikirim ke Gemini. Bedanya dengan Scan bukan soal ada-tidaknya foto, tapi soal **siapa yang membaca fotonya**:
 
-### 7.10 K10 — Mini game "Tebak Asal Koin"
+| Jalur | Foto dikirim ke Gemini? | Field diisi oleh |
+|---|---|---|
+| Scan — kamera | Ya | AI (bisa diedit) |
+| Scan — galeri | Ya | AI (bisa diedit) |
+| Tambah manual | **Tidak** — foto (kamera/galeri) tetap **opsional dilampirkan** lewat `image_picker`, hanya tidak diproses AI | Pengguna sepenuhnya |
+
+Tidak perlu kolom baru: `photo_path`/`photo_source` tetap menandai **asal foto** (independen dari AI), sedangkan `ai_summary` tetap **null** untuk koin manual (menandai "belum/tidak pernah dianalisis AI") — baik yang punya foto maupun tidak. Jejak Catatan tetap mencatat blok `ADD` identik untuk ketiga jalur ini — hash chain tidak membedakan asal data, hanya menghitung hash dari data koin yang akhirnya tersimpan. Berguna untuk koin tanpa foto tersedia, saat offline, atau saat kuota AI habis.
+
+**b. Chatbot "Tanya Numisma" (LLM)** — `chat_screen.dart`
+- **Mode umum:** dibuka dari grid Beranda, tanya jawab numismatik umum dengan prompt sistem Lampiran B.2. Riwayat percakapan di memori selama sesi (kirim maksimal 10 pesan terakhir).
+- **Mode konteks koin (fitur "Tanya Numisma tentang koin ini"):** tombol di `coin_detail_screen.dart` membuka `chat_screen.dart` dengan parameter opsional `contextCoin`. Saat ada `contextCoin`:
+  1. Baca file foto dari `photo_path` koin itu **kalau ada** (apapun asalnya — scan atau dilampirkan manual) dan field data yang tersimpan saat ini (`country`, `currency_code`, `denomination`, `year`, `condition`, `ai_summary` bila terisi).
+  2. Kirim foto (bila ada) + ringkasan data itu sebagai bagian pesan pertama ke Gemini, sebelum pertanyaan pengguna. Untuk koin hasil Scan, ini berarti AI **melihat ulang** gambar yang sama (bukan cuma percaya teks hasil scan sebelumnya). Untuk koin manual yang dilampiri foto tapi `ai_summary` masih null, ini justru **kali pertama** AI melihat fotonya — mekanismenya sama, cuma "dulunya belum pernah dianalisis AI". Kalau koin manual itu sama sekali tidak punya foto, AI hanya punya teks yang diisi pengguna, tanpa bukti visual untuk dicek ulang.
+  3. **Revisi tetap manual:** kalau dari obrolan AI menyarankan data berbeda dari yang tersimpan, pengguna harus membuka sendiri `coin_form_screen.dart` (tombol Edit) untuk mengubahnya. Chat **tidak** menulis balik ke database secara otomatis — supaya pengguna tetap mengonfirmasi setiap perubahan data (konsisten dengan Bagian 1.6) dan implementasinya tetap sederhana (tidak perlu function-calling/tool-use dari Gemini ke database).
+  4. Tanda tangan `gemini_service.chat(history, userMessage)` di Bagian 8 **tidak berubah** — koin opsional ini cuma menambah isi pesan pertama di `chat_screen.dart`, bukan mengubah kontrak service.
+- **Selesai bila:** T14, T15.
+- **File:** `gemini_service.dart`, `chat_screen.dart`, `coin_detail_screen.dart`.
+
+### 7.10 K10 — Mini game "Tebak Asal Koin" + Coin Flip
+
+**a. Tebak Asal Koin**
 - 10 soal dari `coins_seed.json`. Tiap soal menampilkan satu koin sebagai widget (`coin_face`: lingkaran dengan nominal dan kode mata uang; **tanpa gambar berlisensi**) dan 4 pilihan negara.
 - Skor disimpan ke `game_scores`; tampilkan skor tertinggi.
-- Bonus murah: **Coin Flip** dengan goyang HP.
+
+**b. Coin Flip (pembawa fitur accelerometer, lihat 7.8)**
+- Bukan kuis — ini mini-toy lempar koin. Tombol atau goyang HP (accelerometer, ambang ~15 m/s²) memicu animasi `coin_face` berputar cepat lalu berhenti random di **Head** atau **Tail** (50/50, `Random.secure()` seperlunya).
+- Sengaja memakai widget generik (bukan foto koin koleksi asli) — karena ini bukan representasi item koleksi tertentu, jadi tidak ada masalah "harus ada dua sisi foto asli" (lihat catatan di 7.8).
+- Ditempatkan di tab/halaman yang sama dengan Tebak Asal Koin (`game_screen.dart`), sebagai dua mode berbeda dalam satu screen.
 - **Selesai bila:** T16.
 - **File:** `game_service.dart`, `game_screen.dart`.
 

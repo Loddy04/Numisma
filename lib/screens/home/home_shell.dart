@@ -1,0 +1,252 @@
+// screens/home/home_shell.dart
+// Kerangka utama setelah login (NUMISMA_GUIDE Bagian 4.3): bottom nav
+// 5 ikon + isi tab. Ikon Scan di tengah dibuat menonjol, jadi kita
+// TIDAK memakai BottomNavigationBar bawaan Flutter (bentuknya datar
+// dan tidak bisa menonjolkan satu ikon). Gantinya: Stack berisi bar
+// biasa + satu tombol bulat yang "naik" dari garis bar.
+
+import 'package:flutter/material.dart';
+
+import '../../services/auth_service.dart';
+import '../../theme.dart';
+import '../auth/login_screen.dart';
+
+class HomeShell extends StatefulWidget {
+  final String username;
+  const HomeShell({super.key, required this.username});
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  final _authService = AuthService();
+
+  // Hanya 3 ikon yang punya halaman (Beranda, Profil, Saran). Scan dan
+  // Keluar adalah aksi, jadi tidak mengubah indeks tab yang aktif.
+  static const _tabBeranda = 0;
+  static const _tabProfil = 1;
+  static const _tabSaran = 2;
+  int _tab = _tabBeranda;
+
+  static const _titles = ['Numisma', 'Profil', 'Saran & Kesan'];
+
+  // Item grid Beranda. Halaman aslinya dibuat di hari-hari berikutnya,
+  // untuk sekarang tiap item membuka halaman placeholder.
+  static const _features = <_Feature>[
+    _Feature('Koleksi', Icons.collections_bookmark),
+    _Feature('Konversi', Icons.currency_exchange),
+    _Feature('Jelajah', Icons.map),
+    _Feature('Jejak Catatan', Icons.link),
+    _Feature('Tanya Numisma', Icons.chat),
+    _Feature('Game', Icons.sports_esports),
+    _Feature('Sinkron', Icons.cloud_sync),
+  ];
+
+  void _openPlaceholder(String title) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => _PlaceholderPage(title: title)),
+    );
+  }
+
+  // Scan = aksi cepat, bukan tab. Nanti diganti membuka scan_screen.dart
+  // (Hari 4); sekarang placeholder.
+  void _onScan() => _openPlaceholder('Scan');
+
+  // Keluar tidak punya halaman: tampilkan dialog, dan indeks tab aktif
+  // tidak diubah supaya kalau dibatalkan pengguna tetap di tab semula.
+  Future<void> _onLogout() async {
+    final yakin = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar'),
+        content: const Text('Yakin ingin keluar dari akun ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (yakin != true) return;
+
+    await _authService.logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
+  Widget _buildBody() {
+    switch (_tab) {
+      case _tabProfil:
+        return const Center(child: Text('Profil (Hari 2, langkah 6)'));
+      case _tabSaran:
+        return const Center(child: Text('Saran & Kesan (Hari 2, langkah 8)'));
+      default:
+        return _buildGrid();
+    }
+  }
+
+  Widget _buildGrid() {
+    return GridView.count(
+      crossAxisCount: 3,
+      padding: const EdgeInsets.all(16),
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      children: [
+        for (final f in _features)
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => _openPlaceholder(f.label),
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(f.icon, size: 36, color: AppColors.bronze),
+                  const SizedBox(height: 8),
+                  Text(
+                    f.label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // Satu ikon bar. Yang aktif diwarnai perunggu, sisanya abu-abu.
+  Widget _navItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool active = false,
+  }) {
+    final color = active ? AppColors.bronze : Colors.grey;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color),
+            Text(label, style: TextStyle(fontSize: 11, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    const barHeight = 64.0;
+    const scanSize = 64.0;
+    // Tinggi total = bar + bagian tombol Scan yang menonjol di atasnya.
+    // Tombol sengaja tetap DI DALAM area widget supaya bisa ditekan
+    // (area di luar batas induk tidak menerima sentuhan).
+    const totalHeight = barHeight + scanSize / 2;
+
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: totalHeight,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+              height: barHeight,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
+              ),
+              child: Row(
+                children: [
+                  _navItem(
+                    icon: Icons.home,
+                    label: 'Beranda',
+                    active: _tab == _tabBeranda,
+                    onTap: () => setState(() => _tab = _tabBeranda),
+                  ),
+                  _navItem(
+                    icon: Icons.person,
+                    label: 'Profil',
+                    active: _tab == _tabProfil,
+                    onTap: () => setState(() => _tab = _tabProfil),
+                  ),
+                  // Ruang kosong di tengah untuk tombol Scan.
+                  const Expanded(child: SizedBox()),
+                  _navItem(
+                    icon: Icons.rate_review,
+                    label: 'Saran',
+                    active: _tab == _tabSaran,
+                    onTap: () => setState(() => _tab = _tabSaran),
+                  ),
+                  _navItem(
+                    icon: Icons.logout,
+                    label: 'Keluar',
+                    onTap: _onLogout,
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 0,
+              child: Material(
+                color: AppColors.bronze,
+                shape: const CircleBorder(),
+                elevation: 6,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: _onScan,
+                  child: const SizedBox(
+                    width: scanSize,
+                    height: scanSize,
+                    child: Icon(Icons.camera_alt, color: Colors.white, size: 30),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_titles[_tab])),
+      body: _buildBody(),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+}
+
+class _Feature {
+  final String label;
+  final IconData icon;
+  const _Feature(this.label, this.icon);
+}
+
+// Halaman sementara untuk fitur yang belum dibuat.
+class _PlaceholderPage extends StatelessWidget {
+  final String title;
+  const _PlaceholderPage({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text('$title — segera hadir')),
+    );
+  }
+}
