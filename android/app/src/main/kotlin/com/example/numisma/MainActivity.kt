@@ -1,5 +1,7 @@
 package com.example.numisma
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// FlutterFragmentActivity (bukan FlutterActivity) karena paket local_auth
+// menampilkan dialog biometrik lewat Fragment (NUMISMA_GUIDE Bagian 3).
+class MainActivity : FlutterFragmentActivity()
