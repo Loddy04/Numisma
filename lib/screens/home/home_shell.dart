@@ -13,6 +13,7 @@ import '../../services/auth_service.dart';
 import '../../theme.dart';
 import '../auth/login_screen.dart';
 import '../collection/collection_screen.dart';
+import '../feedback/feedback_screen.dart';
 import '../profile/profile_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -127,7 +128,7 @@ class _HomeShellState extends State<HomeShell> {
           onPhotoChanged: (path) => setState(() => _photoPath = path),
         );
       case _tabSaran:
-        return const Center(child: Text('Saran & Kesan (Hari 2, langkah 8)'));
+        return const FeedbackScreen();
       default:
         return _buildGrid();
     }
