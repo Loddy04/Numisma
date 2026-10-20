@@ -13,6 +13,7 @@ import '../../services/auth_service.dart';
 import '../../theme.dart';
 import '../auth/login_screen.dart';
 import '../collection/collection_screen.dart';
+import '../convert/convert_screen.dart';
 import '../feedback/feedback_screen.dart';
 import '../profile/profile_screen.dart';
 
@@ -75,6 +76,10 @@ class _HomeShellState extends State<HomeShell> {
     if (label == 'Koleksi') {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const CollectionScreen()),
+      );
+    } else if (label == 'Konversi') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const ConvertScreen()),
       );
     } else {
       _openPlaceholder(label);
