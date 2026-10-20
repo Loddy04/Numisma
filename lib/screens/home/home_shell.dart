@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../theme.dart';
 import '../auth/login_screen.dart';
+import '../collection/collection_screen.dart';
 
 class HomeShell extends StatefulWidget {
   final String username;
@@ -42,6 +43,18 @@ class _HomeShellState extends State<HomeShell> {
     _Feature('Game', Icons.sports_esports),
     _Feature('Sinkron', Icons.cloud_sync),
   ];
+
+  // Ikon Koleksi sudah punya halaman asli; sisanya masih placeholder
+  // sampai fiturnya dibuat di hari-hari berikutnya.
+  void _openFeature(String label) {
+    if (label == 'Koleksi') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const CollectionScreen()),
+      );
+    } else {
+      _openPlaceholder(label);
+    }
+  }
 
   void _openPlaceholder(String title) {
     Navigator.of(context).push(
@@ -104,7 +117,7 @@ class _HomeShellState extends State<HomeShell> {
         for (final f in _features)
           InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: () => _openPlaceholder(f.label),
+            onTap: () => _openFeature(f.label),
             child: Card(
               margin: EdgeInsets.zero,
               child: Column(

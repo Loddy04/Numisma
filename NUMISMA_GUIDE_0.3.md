@@ -515,6 +515,8 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
 - **Online:** dua tombol di Koleksi:
   - **Unggah:** kirim koin `is_synced=0` dan blok rantai `is_synced=0` ke Supabase (`upsert`, `user_key` = username), lalu tandai `is_synced=1`.
   - **Pulihkan:** ambil koin dan blok milik username itu dari Supabase, masukkan yang belum ada di lokal. Foto tidak ikut (tampilkan placeholder).
+- **Koin yang sudah dihapus tidak boleh hidup lagi saat Pulihkan.** Menghapus koin di lokal tidak menghapus barisnya di Supabase (kontrak `sync_service` hanya `upload`/`restore`, tanpa `delete` ke Supabase), jadi tanpa aturan ini koin yang dihapus muncul kembali. Aturannya, tanpa ubah skema atau kontrak: di `restore()`, gabungkan blok rantai lokal dan remote, lalu untuk tiap `coin_id` lihat blok dengan `idx` tertinggi. Bila `action`-nya `DELETE`, koin itu **tidak dipulihkan**. Ini berlaku baik blok DELETE-nya sudah terunggah maupun baru ada di lokal. Syaratnya: `CoinRepo.delete` wajib menambah blok `DELETE` ke rantai (Hari 4), dan mengambil data koin dulu sebelum menghapus supaya snapshot-nya bisa masuk ke blok.
+- **Format waktu `ts` harus dinormalkan saat Pulihkan.** Kolom `ts` di Supabase bertipe `timestamptz`, sehingga teks yang dikembalikan bisa berbeda dari teks asli di SQLite (mis. `+00:00` menggantikan `Z`). Karena `ts` ikut rumus `hash` (7.13), perbedaan teks membuat verifikasi gagal pada blok hasil pulihan. Aturannya: sebelum disimpan ke lokal, `ts` dari Supabase di-parse ke `DateTime` UTC lalu dicetak ulang dengan `toUtc().toIso8601String()`, format yang sama saat blok dibuat. **Belum diverifikasi:** bentuk persis `ts` yang dikembalikan Supabase. Cek dengan `curl` ke REST Supabase setelah satu blok terunggah, sebelum menulis parser.
 - **Tanpa penyelesaian konflik.** Tulis di laporan sebagai keterbatasan.
 - **Selesai bila:** tambah koin → Unggah → hapus data aplikasi → daftar ulang dengan username yang sama → Pulihkan → koleksi dan Jejak Catatan kembali (T18).
 - **File:** `sync_service.dart`.
@@ -634,8 +636,10 @@ Tidak perlu kolom baru: `photo_path`/`photo_source` tetap menandai **asal foto**
 - `data_hash` = SHA-256 dari **JSON kanonik** (kunci terurut) snapshot koin berisi `id, type, country, currency_code, denomination, year, condition, buy_price, buy_currency`. **Jangan** menyertakan `notes_enc`, `ai_summary`, `photo_path`, atau timestamp (ciphertext AES berubah tiap enkripsi karena IV acak).
 - `photo_hash` = SHA-256 byte foto saat koin ditambahkan atau diubah.
 - `hash` = SHA-256 dari gabungan `idx|ts|coin_id|action|data_hash|photo_hash|photo_source|prev_hash|nonce`.
-- **Proof-of-work ringan:** cari `nonce` hingga `hash` diawali `"00"`.
-- Blok genesis: `idx=0`, `action=GENESIS`, `prev_hash` = 64 karakter `0`. Dibuat saat registrasi.
+- **Nilai kosong (null) selalu ditulis sebagai string kosong `""`** saat digabung ke rumus `hash`. Berlaku untuk semua field yang boleh null (`coin_id` pada genesis, `photo_hash`, `photo_source`), baik saat membuat blok maupun saat verifikasi, supaya kedua sisi menghasilkan string yang identik. Satu fungsi pembentuk string hash dipakai di kedua tempat itu, tidak ditulis dua kali.
+- **Tipe data snapshot dijaga tetap** agar `data_hash` stabil: `denomination`, `buy_price` selalu `double`, `year` selalu `int` atau null. Data hasil pulihan dari JSON harus dikonversi ke tipe itu sebelum snapshot dihitung ulang (angka JSON seperti `100` bisa terbaca sebagai `int`, sedangkan aslinya `100.0`).
+- **Proof-of-work ringan:** cari `nonce` hingga `hash` diawali `"00"`. Berlaku untuk **semua blok tanpa pengecualian, termasuk genesis**.
+- Blok genesis: `idx=0`, `action=GENESIS`, `prev_hash` = 64 karakter `0`, `coin_id` = null (ditulis `""` di rumus hash). `nonce`-nya dicari dengan proses yang sama seperti blok lain sampai `hash` diawali `"00"`. Dibuat saat registrasi.
 
 **Verifikasi rantai (tombol "Verifikasi"):**
 1. Urutkan blok per `idx`. Tiap blok: hitung ulang `hash` dan cocokkan; cek diawali `"00"`; cek `prev_hash` sama dengan `hash` blok sebelumnya.

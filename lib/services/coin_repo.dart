@@ -55,13 +55,26 @@ class CoinRepo {
   // Mengubah koin yang sudah ada. `updated_at` diperbarui dan
   // `is_synced` dikembalikan ke 0 supaya perubahan ikut terunggah
   // pada sinkronisasi berikutnya.
-  Future<void> update(Coin coin) async {
+  //
+  // `photoBytes` opsional: diisi hanya kalau pengguna mengganti/menambah
+  // foto saat mengubah koin. File foto lama dihapus supaya tidak yatim.
+  // (`photoSource` disiapkan untuk Jejak Catatan Hari 4, sama seperti insert.)
+  Future<void> update(
+    Coin coin, {
+    Uint8List? photoBytes,
+    String photoSource = 'none',
+  }) async {
     final db = await DbHelper.instance.database;
 
-    final updated = coin.copyWith(
+    var updated = coin.copyWith(
       updatedAt: DateTime.now().toUtc().toIso8601String(),
       isSynced: false,
     );
+    if (photoBytes != null) {
+      final newPath = await _savePhoto(coin.id, photoBytes);
+      await _deleteFile(coin.photoPath);
+      updated = updated.copyWith(photoPath: newPath);
+    }
 
     await db.update(
       'coins',
@@ -87,10 +100,7 @@ class CoinRepo {
 
     await db.delete('coins', where: 'id = ?', whereArgs: [coinId]);
 
-    if (photoPath != null) {
-      final file = File(photoPath);
-      if (await file.exists()) await file.delete();
-    }
+    await _deleteFile(photoPath);
   }
 
   // Daftar koin milik satu pengguna, dengan cari/filter/urut (K11).
@@ -180,16 +190,24 @@ class CoinRepo {
     return CryptoUtil.encryptText(notes);
   }
 
-  // Menulis foto ke <folder dokumen>/coin_photos/<id>.jpg dan
-  // mengembalikan path-nya. Nama file = id koin, jadi satu koin
-  // selalu punya paling banyak satu file foto.
+  // Menulis foto ke <folder dokumen>/coin_photos/ dan mengembalikan
+  // path-nya. Nama file memuat cap waktu supaya mengganti foto selalu
+  // menghasilkan path BARU -- kalau namanya sama, Flutter bisa terus
+  // menampilkan gambar lama dari cache.
   Future<String> _savePhoto(String coinId, Uint8List bytes) async {
     final docs = await getApplicationDocumentsDirectory();
     final dir = Directory(p.join(docs.path, 'coin_photos'));
     if (!await dir.exists()) await dir.create(recursive: true);
 
-    final file = File(p.join(dir.path, '$coinId.jpg'));
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final file = File(p.join(dir.path, '${coinId}_$stamp.jpg'));
     await file.writeAsBytes(bytes);
     return file.path;
+  }
+
+  Future<void> _deleteFile(String? path) async {
+    if (path == null) return;
+    final file = File(path);
+    if (await file.exists()) await file.delete();
   }
 }

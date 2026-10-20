@@ -81,6 +81,11 @@ class Coin {
     );
   }
 
+  // Nominal tanpa ".0" yang tidak perlu: 100.0 tampil "100", 0.5 tetap "0.5".
+  String get denominationLabel => denomination == denomination.truncateToDouble()
+      ? denomination.toInt().toString()
+      : denomination.toString();
+
   // Ke baris SQLite. `notesEnc` diberikan repo (hasil enkripsi AES),
   // karena model sendiri tidak boleh menulis `notes` sebagai teks biasa.
   Map<String, dynamic> toMap({String? notesEnc}) {
