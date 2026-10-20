@@ -5,12 +5,15 @@
 // dan tidak bisa menonjolkan satu ikon). Gantinya: Stack berisi bar
 // biasa + satu tombol bulat yang "naik" dari garis bar.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../theme.dart';
 import '../auth/login_screen.dart';
 import '../collection/collection_screen.dart';
+import '../profile/profile_screen.dart';
 
 class HomeShell extends StatefulWidget {
   final String username;
@@ -31,6 +34,27 @@ class _HomeShellState extends State<HomeShell> {
   int _tab = _tabBeranda;
 
   static const _titles = ['Numisma', 'Profil', 'Saran & Kesan'];
+
+  // Path foto profil, dipegang di sini (bukan di ProfileScreen) karena
+  // ikon Profil di bottom nav juga menampilkannya. ProfileScreen
+  // memberi tahu lewat callback saat foto diganti.
+  String? _photoPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPhoto();
+  }
+
+  Future<void> _loadPhoto() async {
+    try {
+      final user = await _authService.currentUser();
+      if (!mounted) return;
+      setState(() => _photoPath = user?.photoPath);
+    } catch (_) {
+      // Gagal memuat foto tidak fatal: ikon orang bawaan tetap tampil.
+    }
+  }
 
   // Item grid Beranda. Halaman aslinya dibuat di hari-hari berikutnya,
   // untuk sekarang tiap item membuka halaman placeholder.
@@ -99,7 +123,9 @@ class _HomeShellState extends State<HomeShell> {
   Widget _buildBody() {
     switch (_tab) {
       case _tabProfil:
-        return const Center(child: Text('Profil (Hari 2, langkah 6)'));
+        return ProfileScreen(
+          onPhotoChanged: (path) => setState(() => _photoPath = path),
+        );
       case _tabSaran:
         return const Center(child: Text('Saran & Kesan (Hari 2, langkah 8)'));
       default:
@@ -139,11 +165,13 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   // Satu ikon bar. Yang aktif diwarnai perunggu, sisanya abu-abu.
+  // `customIcon` menggantikan ikon bawaan (dipakai Profil untuk foto).
   Widget _navItem({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
     bool active = false,
+    Widget? customIcon,
   }) {
     final color = active ? AppColors.bronze : Colors.grey;
     return Expanded(
@@ -152,10 +180,35 @@ class _HomeShellState extends State<HomeShell> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color),
+            customIcon ?? Icon(icon, color: color),
             Text(label, style: TextStyle(fontSize: 11, color: color)),
           ],
         ),
+      ),
+    );
+  }
+
+  // Foto profil kecil berbentuk lingkaran sebagai ikon tab Profil.
+  // Null = belum ada foto, pakai ikon orang bawaan (customIcon null).
+  // Cincin perunggu menandai tab Profil sedang aktif.
+  Widget? _profileNavIcon() {
+    final path = _photoPath;
+    if (path == null) return null;
+    final active = _tab == _tabProfil;
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: active ? AppColors.bronze : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: CircleAvatar(
+        radius: 11,
+        backgroundImage: FileImage(File(path)),
+        // File hilang tidak boleh membuat nav crash.
+        onBackgroundImageError: (_, _) {},
       ),
     );
   }
@@ -191,6 +244,7 @@ class _HomeShellState extends State<HomeShell> {
                   ),
                   _navItem(
                     icon: Icons.person,
+                    customIcon: _profileNavIcon(),
                     label: 'Profil',
                     active: _tab == _tabProfil,
                     onTap: () => setState(() => _tab = _tabProfil),

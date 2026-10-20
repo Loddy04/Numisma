@@ -6,6 +6,12 @@
 // Alur: screen -> auth_service -> db_helper. Layar (login_screen,
 // register_screen) TIDAK PERNAH memanggil database langsung.
 
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+
 import '../core/crypto_util.dart';
 import '../core/db_helper.dart';
 import '../core/session_store.dart';
@@ -129,5 +135,36 @@ class AuthService {
   // teks biasa).
   Future<String> decryptedEmail(User user) {
     return CryptoUtil.decryptText(user.emailEnc);
+  }
+
+  // Menyimpan foto profil: byte foto ditulis sebagai file di folder
+  // aplikasi, lalu path-nya disimpan ke users.photo_path (tabel hanya
+  // menyimpan path, bukan gambarnya -- Bagian 5.1). Nama file memuat
+  // cap waktu supaya foto yang diganti tidak tampil dari cache lama,
+  // dan file foto sebelumnya dihapus agar tidak menumpuk.
+  Future<User> updateProfilePhoto(User user, Uint8List bytes) async {
+    final docs = await getApplicationDocumentsDirectory();
+    final dir = Directory(p.join(docs.path, 'profile_photos'));
+    if (!await dir.exists()) await dir.create(recursive: true);
+
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final file = File(p.join(dir.path, '${user.id}_$stamp.jpg'));
+    await file.writeAsBytes(bytes);
+
+    final db = await DbHelper.instance.database;
+    await db.update(
+      'users',
+      {'photo_path': file.path},
+      where: 'id = ?',
+      whereArgs: [user.id],
+    );
+
+    final old = user.photoPath;
+    if (old != null) {
+      final oldFile = File(old);
+      if (await oldFile.exists()) await oldFile.delete();
+    }
+
+    return user.copyWith(photoPath: file.path);
   }
 }

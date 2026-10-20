@@ -18,6 +18,7 @@ import '../../models/coin.dart';
 import '../../services/coin_repo.dart';
 import '../../theme.dart';
 import '../../widgets/currency_picker.dart';
+import '../crop/crop_screen.dart';
 
 class CoinFormScreen extends StatefulWidget {
   final int userId;
@@ -147,8 +148,15 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
         imageQuality: 85,
       );
       if (picked == null) return;
-      final bytes = await picked.readAsBytes();
+      final original = await picked.readAsBytes();
       if (!mounted) return;
+
+      // Pengguna mengatur area foto dulu; batal = foto tidak dipakai.
+      // Rasio bebas karena uang kertas berbentuk persegi panjang.
+      final bytes =
+          await CropScreen.open(context, original, allowRatioChoice: true);
+      if (bytes == null || !mounted) return;
+
       setState(() {
         _newPhotoBytes = bytes;
         _photoError = false;
