@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../home/home_shell.dart';
 import 'login_screen.dart';
@@ -29,7 +30,18 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkSession() async {
-    final user = await _authService.currentUser();
+    // Kalau pembacaan session gagal (mis. penyimpanan tidak bisa
+    // dibuka), anggap belum login dan tampilkan Login. Tanpa ini,
+    // Splash berputar selamanya tanpa pesan apa pun.
+    User? found;
+    try {
+      found = await _authService.currentUser();
+    } catch (_) {
+      found = null;
+    }
+    // Salinan final supaya Dart mengenali nilainya tidak null di dalam
+    // closure builder di bawah.
+    final user = found;
 
     if (!mounted) return;
 

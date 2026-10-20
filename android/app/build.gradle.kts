@@ -30,6 +30,14 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // Penyusutan kode (R8) dimatikan: di build release, R8 membuang
+            // method yang dipakai plugin shared_preferences lewat JNI
+            // (NoSuchMethodError ...SharedPreferencesApiRegistrar.getAll),
+            // sehingga aplikasi macet di Splash. Ukuran APK sedikit lebih
+            // besar, tapi tidak masalah untuk proyek ini.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
