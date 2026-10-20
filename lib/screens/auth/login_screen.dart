@@ -1,10 +1,12 @@
 // screens/auth/login_screen.dart
-// Form login: username + password. Biometrik (Bagian 7.3) belum
-// ditambahkan di sini -- itu target Hari 2.
+// Form login: username + password, plus tombol "Masuk dengan sidik
+// jari" (Bagian 7.3) yang hanya muncul bila fitur itu sudah dinyalakan
+// di Profil dan HP-nya mendukung.
 
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/biometric_service.dart';
 import 'register_screen.dart';
 import 'splash_screen.dart';
 
@@ -20,9 +22,58 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
+  final _biometricService = BiometricService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _canBiometric = false; // true = tombol sidik jari ditampilkan
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometric();
+  }
+
+  Future<void> _checkBiometric() async {
+    final can = await _biometricService.canLoginWithBiometric();
+    if (!mounted) return;
+    setState(() => _canBiometric = can);
+  }
+
+  // Login lewat sidik jari. Gagal/dibatalkan: pesan ramah, dan login
+  // dengan password tetap bisa dipakai.
+  Future<void> _handleBiometricLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await _biometricService.loginWithBiometric();
+      if (!mounted) return;
+
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Sidik jari tidak dikenali atau dibatalkan. Gunakan password.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Sama seperti login password: lewat SplashScreen supaya logika
+      // cek session tidak ditulis dua kali.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const SplashScreen()),
+        (route) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login sidik jari gagal, coba lagi.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -157,9 +208,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                     child: const Text('Belum punya akun? Daftar di sini'),
                   ),
-                  // TODO (Hari 2, Bagian 7.3): tambah tombol
-                  // "Masuk dengan sidik jari" di sini, muncul hanya
-                  // kalau SessionStore.isBiometricEnabled() == true.
+                  if (_canBiometric) ...[
+                    const SizedBox(height: 4),
+                    OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _handleBiometricLogin,
+                      icon: const Icon(Icons.fingerprint),
+                      label: const Text('Masuk dengan sidik jari'),
+                    ),
+                  ],
                 ],
               ),
             ),

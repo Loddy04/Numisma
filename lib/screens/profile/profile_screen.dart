@@ -5,7 +5,7 @@
 //
 // Email tersimpan terenkripsi di database; di sini didekripsi hanya
 // untuk ditampilkan dan tidak pernah ditulis balik sebagai teks biasa.
-// Switch login biometrik ditambahkan di langkah berikutnya (K3).
+// Switch "Masuk dengan sidik jari" (K3) ada di bagian bawah.
 
 import 'dart:io';
 
@@ -14,6 +14,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
+import '../../services/biometric_service.dart';
 import '../../theme.dart';
 import '../crop/crop_screen.dart';
 
@@ -29,12 +30,15 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _authService = AuthService();
+  final _biometricService = BiometricService();
   final _picker = ImagePicker();
 
   User? _user;
   String _email = '';
   bool _loading = true;
   bool _savingPhoto = false;
+  bool _biometricAvailable = false; // HP punya sensor + sidik jari terdaftar
+  bool _biometricBusy = false; // sedang memindai/menyimpan pengaturan
 
   @override
   void initState() {
@@ -47,10 +51,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final user = await _authService.currentUser();
       final email =
           user == null ? '' : await _authService.decryptedEmail(user);
+      final bioAvailable = await _biometricService.isAvailable();
       if (!mounted) return;
       setState(() {
         _user = user;
         _email = email;
+        _biometricAvailable = bioAvailable;
         _loading = false;
       });
     } catch (_) {
@@ -62,6 +68,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showMessage(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  // Menyalakan harus lolos pemindaian sidik jari dulu (di dalam
+  // BiometricService.enable); mematikan langsung. Switch baru berubah
+  // setelah hasilnya pasti, supaya tampilannya tidak menipu.
+  Future<void> _toggleBiometric(bool value) async {
+    final user = _user;
+    if (user == null) return;
+
+    setState(() => _biometricBusy = true);
+    try {
+      var ok = true;
+      if (value) {
+        ok = await _biometricService.enable(user);
+      } else {
+        await _biometricService.disable(user);
+      }
+      if (!mounted) return;
+      setState(() {
+        if (ok) _user = user.copyWith(biometricEnabled: value);
+        _biometricBusy = false;
+      });
+      if (!ok) {
+        _showMessage('Pemindaian gagal. Login sidik jari tidak diaktifkan.');
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _biometricBusy = false);
+      _showMessage('Gagal mengubah pengaturan, coba lagi.');
+    }
   }
 
   Future<void> _changePhoto() async {
@@ -215,6 +251,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _infoTile(Icons.person, 'Username', user.username),
         _infoTile(Icons.email, 'Email', _email),
         _infoTile(Icons.event, 'Bergabung', _formatDate(user.createdAt)),
+        Card(
+          child: SwitchListTile(
+            secondary: const Icon(Icons.fingerprint, color: AppColors.bronze),
+            title: const Text('Masuk dengan sidik jari'),
+            subtitle: Text(
+              _biometricAvailable
+                  ? 'Login tanpa mengetik password.'
+                  : 'Tidak tersedia: HP belum punya sidik jari terdaftar.',
+            ),
+            value: user.biometricEnabled,
+            // null = switch nonaktif (abu-abu) saat tidak tersedia/sibuk.
+            onChanged: (_biometricAvailable && !_biometricBusy)
+                ? _toggleBiometric
+                : null,
+          ),
+        ),
       ],
     );
   }
