@@ -15,8 +15,12 @@ import 'package:path_provider/path_provider.dart';
 import '../core/crypto_util.dart';
 import '../core/db_helper.dart';
 import '../models/coin.dart';
+import 'chain_service.dart';
+import 'package:sqflite/sqflite.dart';
 
 class CoinRepo {
+  final _chain = ChainService();
+
   // Kolom yang boleh dipakai untuk urutan. Nilai `sort` dari layar
   // dipetakan lewat daftar ini (bukan disambung langsung ke SQL),
   // supaya tidak ada celah SQL injection dan nilai aneh jadi 'newest'.
@@ -29,10 +33,10 @@ class CoinRepo {
   // Menyimpan koin baru. Foto (kalau ada) ditulis ke folder aplikasi
   // dan tabel hanya menyimpan path-nya (Bagian 5.1).
   //
-  // `photoSource` ('camera' / 'gallery' / 'none') belum dipakai di
-  // sini: ia baru dibutuhkan saat blok Jejak Catatan dibuat (Hari 4).
-  // Parameternya sudah disediakan sekarang supaya tanda tangan fungsi
-  // tidak berubah nanti.
+  // Koin dan blok ADD Jejak Catatan (K13) ditulis dalam SATU transaksi:
+  // keduanya tersimpan bersama atau gagal bersama, jadi tidak pernah ada koin
+  // tanpa catatan. `photoSource` ('camera' / 'gallery' / 'none') dan hash
+  // byte foto ikut dicatat di blok.
   Future<void> insert(
     Coin coin, {
     Uint8List? photoBytes,
@@ -45,20 +49,38 @@ class CoinRepo {
       final path = await _savePhoto(coin.id, photoBytes);
       toSave = coin.copyWith(photoPath: path);
     }
+    final notesEnc = await _encryptNotes(toSave.notes);
 
-    await db.insert(
-      'coins',
-      toSave.toMap(notesEnc: await _encryptNotes(toSave.notes)),
-    );
+    try {
+      await db.transaction((txn) async {
+        await txn.insert('coins', toSave.toMap(notesEnc: notesEnc));
+        await _chain.addBlock(
+          userId: toSave.userId,
+          coinId: toSave.id,
+          action: 'ADD',
+          coinSnapshot: await _snapshotOfRow(txn, toSave.id),
+          photoBytes: photoBytes,
+          photoSource: photoSource,
+          executor: txn,
+        );
+      });
+    } catch (_) {
+      // Transaksi dibatalkan: file foto yang sudah ditulis jadi yatim.
+      await _deleteFile(toSave.photoPath);
+      rethrow;
+    }
   }
 
   // Mengubah koin yang sudah ada. `updated_at` diperbarui dan
   // `is_synced` dikembalikan ke 0 supaya perubahan ikut terunggah
-  // pada sinkronisasi berikutnya.
+  // pada sinkronisasi berikutnya. Satu blok UPDATE ditambahkan ke Jejak
+  // Catatan dalam transaksi yang sama.
   //
   // `photoBytes` opsional: diisi hanya kalau pengguna mengganti/menambah
-  // foto saat mengubah koin. File foto lama dihapus supaya tidak yatim.
-  // (`photoSource` disiapkan untuk Jejak Catatan Hari 4, sama seperti insert.)
+  // foto saat mengubah koin. File foto lama dihapus supaya tidak yatim,
+  // tetapi baru SETELAH transaksi berhasil. Bila foto tidak diganti, hash
+  // foto lama tetap dicatat di blok baru (dibaca dari file) dan asal fotonya
+  // diwarisi dari blok sebelumnya, supaya verifikasi foto tetap cocok.
   Future<void> update(
     Coin coin, {
     Uint8List? photoBytes,
@@ -72,35 +94,76 @@ class CoinRepo {
     );
     if (photoBytes != null) {
       final newPath = await _savePhoto(coin.id, photoBytes);
-      await _deleteFile(coin.photoPath);
       updated = updated.copyWith(photoPath: newPath);
     }
+    final notesEnc = await _encryptNotes(updated.notes);
+    final hashedPhoto = photoBytes ?? await _readFile(coin.photoPath);
 
-    await db.update(
-      'coins',
-      updated.toMap(notesEnc: await _encryptNotes(updated.notes)),
-      where: 'id = ?',
-      whereArgs: [coin.id],
-    );
+    try {
+      await db.transaction((txn) async {
+        await txn.update(
+          'coins',
+          updated.toMap(notesEnc: notesEnc),
+          where: 'id = ?',
+          whereArgs: [coin.id],
+        );
+        final source = photoBytes != null
+            ? photoSource
+            : (await _chain.lastBlockForCoin(
+                    txn,
+                    coin.userId,
+                    coin.id,
+                  ))?.photoSource ??
+                  'none';
+        await _chain.addBlock(
+          userId: coin.userId,
+          coinId: coin.id,
+          action: 'UPDATE',
+          coinSnapshot: await _snapshotOfRow(txn, coin.id),
+          photoBytes: hashedPhoto,
+          photoSource: source,
+          executor: txn,
+        );
+      });
+    } catch (_) {
+      if (photoBytes != null) await _deleteFile(updated.photoPath);
+      rethrow;
+    }
+
+    if (photoBytes != null) await _deleteFile(coin.photoPath);
   }
 
   // Menghapus koin beserta file fotonya, supaya tidak ada file yatim
   // yang menumpuk di folder aplikasi.
+  //
+  // Data koin dibaca DULU, sebelum barisnya dihapus: blok DELETE di Jejak
+  // Catatan menyimpan hash data terakhir koin itu. Tanpa blok DELETE, koin
+  // yang hilang terlihat seperti kecurangan saat verifikasi, dan nanti
+  // "hidup lagi" saat Pulihkan dari Supabase (Bagian 7.4).
   Future<void> delete(String coinId) async {
     final db = await DbHelper.instance.database;
 
     final rows = await db.query(
       'coins',
-      columns: ['photo_path'],
       where: 'id = ?',
       whereArgs: [coinId],
       limit: 1,
     );
-    final photoPath = rows.isEmpty ? null : rows.first['photo_path'] as String?;
+    if (rows.isEmpty) return;
+    final coin = Coin.fromMap(rows.first);
 
-    await db.delete('coins', where: 'id = ?', whereArgs: [coinId]);
+    await db.transaction((txn) async {
+      await _chain.addBlock(
+        userId: coin.userId,
+        coinId: coin.id,
+        action: 'DELETE',
+        coinSnapshot: ChainService.snapshotOf(coin),
+        executor: txn,
+      );
+      await txn.delete('coins', where: 'id = ?', whereArgs: [coinId]);
+    });
 
-    await _deleteFile(photoPath);
+    await _deleteFile(coin.photoPath);
   }
 
   // Daftar koin milik satu pengguna, dengan cari/filter/urut (K11).
@@ -128,8 +191,10 @@ class CoinRepo {
 
     if (query != null && query.trim().isNotEmpty) {
       // CAST ke TEXT supaya nominal & tahun (angka) bisa dicari dengan LIKE.
-      where.add('(country LIKE ? OR CAST(denomination AS TEXT) LIKE ? '
-          'OR CAST(year AS TEXT) LIKE ?)');
+      where.add(
+        '(country LIKE ? OR CAST(denomination AS TEXT) LIKE ? '
+        'OR CAST(year AS TEXT) LIKE ?)',
+      );
       final like = '%${query.trim()}%';
       args.addAll([like, like, like]);
     }
@@ -174,8 +239,9 @@ class CoinRepo {
 
     final row = rows.first;
     final notesEnc = row['notes_enc'] as String?;
-    final notes =
-        notesEnc == null ? null : await CryptoUtil.decryptText(notesEnc);
+    final notes = notesEnc == null
+        ? null
+        : await CryptoUtil.decryptText(notesEnc);
     return Coin.fromMap(row, notes: notes);
   }
 
@@ -188,6 +254,28 @@ class CoinRepo {
   Future<String?> _encryptNotes(String? notes) async {
     if (notes == null || notes.trim().isEmpty) return null;
     return CryptoUtil.encryptText(notes);
+  }
+
+  // Snapshot untuk hash diambil dari baris yang BENAR-BENAR tersimpan (bukan
+  // dari objek di memori), supaya hash blok dan hash saat verifikasi dihitung
+  // dari data yang sama persis, termasuk field yang dikosongkan jadi null.
+  Future<Map<String, dynamic>> _snapshotOfRow(
+    DatabaseExecutor ex,
+    String coinId,
+  ) async {
+    final rows = await ex.query(
+      'coins',
+      where: 'id = ?',
+      whereArgs: [coinId],
+      limit: 1,
+    );
+    return ChainService.snapshotOf(Coin.fromMap(rows.first));
+  }
+
+  Future<Uint8List?> _readFile(String? path) async {
+    if (path == null) return null;
+    final file = File(path);
+    return await file.exists() ? file.readAsBytes() : null;
   }
 
   // Menulis foto ke <folder dokumen>/coin_photos/ dan mengembalikan

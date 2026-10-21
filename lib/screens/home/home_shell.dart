@@ -14,6 +14,7 @@ import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/app_logo.dart';
 import '../auth/login_screen.dart';
+import '../chain/chain_screen.dart';
 import '../collection/collection_screen.dart';
 import '../convert/convert_screen.dart';
 import '../feedback/feedback_screen.dart';
@@ -96,6 +97,10 @@ class _HomeShellState extends State<HomeShell> {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const ConvertScreen()));
+    } else if (label == 'Jejak Catatan') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const ChainScreen()));
     } else if (label == 'Game') {
       Navigator.of(
         context,

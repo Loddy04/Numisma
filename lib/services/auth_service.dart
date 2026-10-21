@@ -16,6 +16,7 @@ import '../core/crypto_util.dart';
 import '../core/db_helper.dart';
 import '../core/session_store.dart';
 import '../models/user.dart';
+import 'chain_service.dart';
 import 'notif_service.dart';
 
 class AuthService {
@@ -75,9 +76,12 @@ class AuthService {
 
     final insertedId = await db.insert('users', newUser.toMap()..remove('id'));
 
-    // TODO (Hari 4, Bagian 7.13): panggil ChainService.createGenesis()
-    // di sini begitu chain_service.dart dibuat, supaya setiap akun
-    // baru langsung punya blok genesis.
+    // Setiap akun baru langsung punya blok genesis Jejak Catatan. Gagal di
+    // sini tidak boleh membatalkan pendaftaran: rantai dibuat otomatis saat
+    // koin pertama disimpan atau saat Jejak Catatan dibuka (ensureChain).
+    try {
+      await ChainService().createGenesis(insertedId);
+    } catch (_) {}
 
     // Sengaja TIDAK membuat session di sini -- setelah daftar,
     // pengguna diarahkan kembali ke layar Login dan harus login
