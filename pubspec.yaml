@@ -38,6 +38,7 @@ flutter:
   assets:
     - .env
     - assets/seed/currencies_seed.json
+    - assets/seed/coins_seed.json
     - assets/logo/logo_numisma_1024.png
 
 # Ikon aplikasi (launcher). Dibuat ulang dengan:

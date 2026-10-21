@@ -17,6 +17,7 @@ import '../auth/login_screen.dart';
 import '../collection/collection_screen.dart';
 import '../convert/convert_screen.dart';
 import '../feedback/feedback_screen.dart';
+import '../game/game_screen.dart';
 import '../profile/profile_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -95,6 +96,10 @@ class _HomeShellState extends State<HomeShell> {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const ConvertScreen()));
+    } else if (label == 'Game') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const GameScreen()));
     } else {
       _openPlaceholder(label);
     }

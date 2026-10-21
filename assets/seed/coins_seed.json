@@ -1,0 +1,389 @@
+[
+ {
+  "id": "seed-001",
+  "type": "coin",
+  "country": "Indonesia",
+  "currency_code": "IDR",
+  "denomination": 500,
+  "year": 2016,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-002",
+  "type": "coin",
+  "country": "Amerika Serikat",
+  "currency_code": "USD",
+  "denomination": 0.25,
+  "year": 1999,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-003",
+  "type": "coin",
+  "country": "Jepang",
+  "currency_code": "JPY",
+  "denomination": 100,
+  "year": 1990,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-004",
+  "type": "coin",
+  "country": "Inggris",
+  "currency_code": "GBP",
+  "denomination": 1,
+  "year": 2017,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-005",
+  "type": "coin",
+  "country": "Singapura",
+  "currency_code": "SGD",
+  "denomination": 1,
+  "year": 2013,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-006",
+  "type": "banknote",
+  "country": "Malaysia",
+  "currency_code": "MYR",
+  "denomination": 5,
+  "year": 2012,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-007",
+  "type": "coin",
+  "country": "Korea Selatan",
+  "currency_code": "KRW",
+  "denomination": 500,
+  "year": 2006,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-008",
+  "type": "coin",
+  "country": "Thailand",
+  "currency_code": "THB",
+  "denomination": 10,
+  "year": 2008,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-009",
+  "type": "coin",
+  "country": "Australia",
+  "currency_code": "AUD",
+  "denomination": 2,
+  "year": 2000,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-010",
+  "type": "coin",
+  "country": "Kanada",
+  "currency_code": "CAD",
+  "denomination": 1,
+  "year": 2012,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-011",
+  "type": "coin",
+  "country": "Selandia Baru",
+  "currency_code": "NZD",
+  "denomination": 1,
+  "year": 2006,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-012",
+  "type": "coin",
+  "country": "Swiss",
+  "currency_code": "CHF",
+  "denomination": 5,
+  "year": 1995,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-013",
+  "type": "banknote",
+  "country": "Tiongkok",
+  "currency_code": "CNY",
+  "denomination": 100,
+  "year": 2015,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-014",
+  "type": "coin",
+  "country": "Hong Kong",
+  "currency_code": "HKD",
+  "denomination": 10,
+  "year": 1998,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-015",
+  "type": "coin",
+  "country": "Taiwan",
+  "currency_code": "TWD",
+  "denomination": 10,
+  "year": 2005,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-016",
+  "type": "coin",
+  "country": "Filipina",
+  "currency_code": "PHP",
+  "denomination": 5,
+  "year": 2011,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-017",
+  "type": "banknote",
+  "country": "Vietnam",
+  "currency_code": "VND",
+  "denomination": 10000,
+  "year": 2006,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-018",
+  "type": "coin",
+  "country": "India",
+  "currency_code": "INR",
+  "denomination": 10,
+  "year": 2011,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-019",
+  "type": "banknote",
+  "country": "Pakistan",
+  "currency_code": "PKR",
+  "denomination": 100,
+  "year": 2009,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-020",
+  "type": "banknote",
+  "country": "Sri Lanka",
+  "currency_code": "LKR",
+  "denomination": 100,
+  "year": 2010,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-021",
+  "type": "banknote",
+  "country": "Bangladesh",
+  "currency_code": "BDT",
+  "denomination": 50,
+  "year": 2012,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-022",
+  "type": "banknote",
+  "country": "Brunei",
+  "currency_code": "BND",
+  "denomination": 10,
+  "year": 2011,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-023",
+  "type": "banknote",
+  "country": "Kamboja",
+  "currency_code": "KHR",
+  "denomination": 1000,
+  "year": 2007,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-024",
+  "type": "banknote",
+  "country": "Laos",
+  "currency_code": "LAK",
+  "denomination": 5000,
+  "year": 2003,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-025",
+  "type": "banknote",
+  "country": "Myanmar",
+  "currency_code": "MMK",
+  "denomination": 1000,
+  "year": 2004,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-026",
+  "type": "banknote",
+  "country": "Arab Saudi",
+  "currency_code": "SAR",
+  "denomination": 50,
+  "year": 2016,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-027",
+  "type": "banknote",
+  "country": "Qatar",
+  "currency_code": "QAR",
+  "denomination": 10,
+  "year": 2008,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-028",
+  "type": "banknote",
+  "country": "Uni Emirat Arab",
+  "currency_code": "AED",
+  "denomination": 100,
+  "year": 2012,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-029",
+  "type": "banknote",
+  "country": "Kuwait",
+  "currency_code": "KWD",
+  "denomination": 1,
+  "year": 2014,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-030",
+  "type": "coin",
+  "country": "Israel",
+  "currency_code": "ILS",
+  "denomination": 5,
+  "year": 2010,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-031",
+  "type": "coin",
+  "country": "Turki",
+  "currency_code": "TRY",
+  "denomination": 1,
+  "year": 2009,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-032",
+  "type": "banknote",
+  "country": "Mesir",
+  "currency_code": "EGP",
+  "denomination": 10,
+  "year": 2014,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-033",
+  "type": "coin",
+  "country": "Afrika Selatan",
+  "currency_code": "ZAR",
+  "denomination": 5,
+  "year": 2005,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-034",
+  "type": "coin",
+  "country": "Rusia",
+  "currency_code": "RUB",
+  "denomination": 10,
+  "year": 2012,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-035",
+  "type": "coin",
+  "country": "Swedia",
+  "currency_code": "SEK",
+  "denomination": 10,
+  "year": 2004,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-036",
+  "type": "coin",
+  "country": "Norwegia",
+  "currency_code": "NOK",
+  "denomination": 20,
+  "year": 2000,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-037",
+  "type": "coin",
+  "country": "Denmark",
+  "currency_code": "DKK",
+  "denomination": 20,
+  "year": 2008,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-038",
+  "type": "coin",
+  "country": "Polandia",
+  "currency_code": "PLN",
+  "denomination": 5,
+  "year": 2010,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-039",
+  "type": "coin",
+  "country": "Ceko",
+  "currency_code": "CZK",
+  "denomination": 20,
+  "year": 2003,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-040",
+  "type": "coin",
+  "country": "Hungaria",
+  "currency_code": "HUF",
+  "denomination": 100,
+  "year": 2008,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-041",
+  "type": "coin",
+  "country": "Brasil",
+  "currency_code": "BRL",
+  "denomination": 1,
+  "year": 2005,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-042",
+  "type": "coin",
+  "country": "Meksiko",
+  "currency_code": "MXN",
+  "denomination": 10,
+  "year": 2004,
+  "note": "contoh"
+ },
+ {
+  "id": "seed-043",
+  "type": "banknote",
+  "country": "Argentina",
+  "currency_code": "ARS",
+  "denomination": 100,
+  "year": 2012,
+  "note": "contoh"
+ }
+]

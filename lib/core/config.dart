@@ -14,7 +14,10 @@ class Config {
   // tidak pernah di-instantiate (new Config() tidak masuk akal).
   Config._();
 
-  static String get geminiApiKey => _readRequired('GEMINI_API_KEY');
+  // AI memakai OpenAI (menggantikan Gemini, keputusan Hari 4). Nama model
+  // ditaruh di .env, bukan di kode, supaya ganti model tidak perlu build ulang.
+  static String get openaiApiKey => _readRequired('OPENAI_API_KEY');
+  static String get openaiModel => _readRequired('OPENAI_MODEL');
   static String get supabaseUrl => _readRequired('SUPABASE_URL');
   static String get supabaseAnonKey => _readRequired('SUPABASE_ANON_KEY');
 
