@@ -1,12 +1,14 @@
 // screens/collection/coin_form_screen.dart
 // Form tambah (manual) dan ubah koin. Satu form dipakai untuk dua mode:
 // kalau `coin` null = tambah baru, kalau terisi = ubah koin itu.
-// Tidak ada pemanggilan Gemini di sini; Scan AI akan mengisi form yang
-// sama di Hari 4 (NUMISMA_GUIDE Bagian 7.9).
+// Form ini tidak memanggil AI sendiri. Jalur Scan (scan_screen.dart) memanggil
+// AI lebih dulu, lalu membuka form ini dengan `guess` (tebakan AI) dan foto
+// yang sudah dipilih: kolom terisi dari tebakan, tetap bisa diedit, dan
+// ringkasan AI ikut tersimpan di coins.ai_summary (NUMISMA_GUIDE Bagian 7.9).
 //
-// Foto (kamera atau galeri) WAJIB saat menambah koin, dan hanya disimpan,
-// tidak dianalisis AI. Saat mengubah, foto tidak dipaksa. Pop dengan
-// nilai true bila data tersimpan.
+// Foto (kamera atau galeri) WAJIB saat menambah koin. Di jalur manual foto
+// hanya disimpan, tidak dianalisis AI. Saat mengubah, foto tidak dipaksa.
+// Pop dengan nilai true bila data tersimpan.
 
 import 'dart:io';
 import 'dart:typed_data';
@@ -15,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../models/coin.dart';
+import '../../services/ai_service.dart';
 import '../../services/coin_repo.dart';
 import '../../theme.dart';
 import '../../widgets/currency_picker.dart';
@@ -23,7 +26,19 @@ import '../crop/crop_screen.dart';
 class CoinFormScreen extends StatefulWidget {
   final int userId;
   final Coin? coin; // null = mode tambah
-  const CoinFormScreen({super.key, required this.userId, this.coin});
+  // Hanya dari jalur Scan: tebakan AI, foto yang dikirim ke AI, dan asalnya
+  // (camera/gallery). Tanpa ketiganya form berjalan seperti biasa (manual).
+  final CoinGuess? guess;
+  final Uint8List? initialPhoto;
+  final String initialPhotoSource;
+  const CoinFormScreen({
+    super.key,
+    required this.userId,
+    this.coin,
+    this.guess,
+    this.initialPhoto,
+    this.initialPhotoSource = 'none',
+  });
 
   @override
   State<CoinFormScreen> createState() => _CoinFormScreenState();
@@ -52,6 +67,8 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
   // foto lama (mode ubah) dibiarkan apa adanya.
   Uint8List? _newPhotoBytes;
   String _photoSource = 'none';
+  // true = tahun di form masih perkiraan AI (hilang begitu pengguna mengetik).
+  bool _yearEstimated = false;
   bool _photoError = false; // true = tampilkan pesan "foto wajib"
   bool _saving = false;
 
@@ -71,6 +88,30 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
       _buyPrice.text = c.buyPrice?.toString() ?? '';
       _buyCurrencyCode = c.buyCurrency;
       _notes.text = c.notes ?? '';
+    }
+
+    // Jalur Scan: isi kolom dari tebakan AI (null dibiarkan kosong supaya
+    // pengguna yang melengkapi) dan pakai foto yang sudah dikirim ke AI.
+    final g = widget.guess;
+    if (g != null && c == null) {
+      _type = g.type;
+      _country.text = g.country ?? '';
+      _currencyCode = g.currencyCode;
+      if (g.denomination != null) {
+        final d = g.denomination!;
+        _denomination.text = d == d.truncateToDouble()
+            ? d.toInt().toString()
+            : d.toString();
+      }
+      _year.text = g.year?.toString() ?? '';
+      _yearEstimated = g.yearEstimated;
+    }
+
+    // Foto dari jalur Scan dipakai juga saat AI gagal dan pengguna memilih
+    // "Isi manual" (guess null): fotonya sudah dipilih, tidak perlu diulang.
+    if (c == null && widget.initialPhoto != null) {
+      _newPhotoBytes = widget.initialPhoto;
+      _photoSource = widget.initialPhotoSource;
     }
   }
 
@@ -153,8 +194,11 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
 
       // Pengguna mengatur area foto dulu; batal = foto tidak dipakai.
       // Rasio bebas karena uang kertas berbentuk persegi panjang.
-      final bytes =
-          await CropScreen.open(context, original, allowRatioChoice: true);
+      final bytes = await CropScreen.open(
+        context,
+        original,
+        allowRatioChoice: true,
+      );
       if (bytes == null || !mounted) return;
 
       setState(() {
@@ -245,6 +289,7 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
           buyPrice: buyPrice,
           buyCurrency: buyCurrency,
           notes: notes,
+          aiSummary: widget.guess?.summary,
         );
         await _repo.insert(
           coin,
@@ -292,6 +337,72 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
 
   // --- Tampilan ------------------------------------------------------
 
+  // Kotak peringatan di atas form hasil Scan. Wajib ada: hasil AI hanyalah
+  // estimasi dan pengguna harus memeriksanya sebelum menyimpan (Bagian 1.6).
+  Widget _buildAiBanner() {
+    final g = widget.guess!;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: AppColors.gold.withValues(alpha: 0.25),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.auto_awesome,
+                  size: 18,
+                  color: AppColors.bronze,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    g.isSample
+                        ? 'Hasil contoh, bukan hasil analisis foto ini'
+                        : 'Estimasi AI, bukan penilaian ahli',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              g.isSample
+                  ? 'Periksa dan ubah semua kolom sebelum menyimpan.'
+                  : 'Periksa dan koreksi kolom di bawah sebelum menyimpan. '
+                        'Kolom kosong berarti AI tidak yakin.',
+              style: const TextStyle(fontSize: 12),
+            ),
+            if (g.features.trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(g.features, style: const TextStyle(fontSize: 12)),
+            ],
+            if (g.yearEstimated) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Tahun ${g.year} adalah perkiraan AI dari desain dan gaya, '
+                'bukan tahun yang tertera. Mohon periksa.',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+            if (!g.isSample) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Tingkat keyakinan AI: ${g.confidence}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const gap = SizedBox(height: 12);
@@ -302,14 +413,17 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (widget.guess != null && !_isEdit) _buildAiBanner(),
             _buildPhotoPreview(),
             const SizedBox(height: 4),
             Text(
               _photoError
                   ? 'Foto wajib diisi.'
                   : (_isEdit
-                      ? 'Tekan foto untuk menggantinya.'
-                      : 'Foto wajib. Hanya disimpan, tidak dianalisis AI.'),
+                        ? 'Tekan foto untuk menggantinya.'
+                        : (widget.guess != null
+                              ? 'Tekan foto untuk menggantinya.'
+                              : 'Foto wajib. Hanya disimpan, tidak dianalisis AI.')),
               style: TextStyle(
                 fontSize: 12,
                 color: _photoError ? AppColors.danger : Colors.black54,
@@ -333,8 +447,9 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
             gap,
             TextFormField(
               controller: _denomination,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(labelText: 'Nominal'),
               validator: _validateDenomination,
             ),
@@ -355,8 +470,15 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
                   child: TextFormField(
                     controller: _year,
                     keyboardType: TextInputType.number,
-                    decoration:
-                        const InputDecoration(labelText: 'Tahun (opsional)'),
+                    decoration: InputDecoration(
+                      labelText: 'Tahun (opsional)',
+                      helperText: _yearEstimated ? 'Perkiraan AI' : null,
+                    ),
+                    onChanged: (_) {
+                      if (_yearEstimated) {
+                        setState(() => _yearEstimated = false);
+                      }
+                    },
                     validator: _validateYear,
                   ),
                 ),
@@ -364,8 +486,9 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String?>(
                     initialValue: _condition,
-                    decoration:
-                        const InputDecoration(labelText: 'Kondisi (opsional)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Kondisi (opsional)',
+                    ),
                     items: [
                       const DropdownMenuItem<String?>(
                         value: null,
@@ -382,10 +505,12 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
             gap,
             TextFormField(
               controller: _buyPrice,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration:
-                  const InputDecoration(labelText: 'Harga beli (opsional)'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Harga beli (opsional)',
+              ),
               validator: _validateBuyPrice,
             ),
             gap,

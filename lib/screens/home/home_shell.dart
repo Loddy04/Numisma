@@ -20,6 +20,7 @@ import '../convert/convert_screen.dart';
 import '../feedback/feedback_screen.dart';
 import '../game/game_screen.dart';
 import '../profile/profile_screen.dart';
+import '../scan/scan_screen.dart';
 
 class HomeShell extends StatefulWidget {
   final String username;
@@ -116,9 +117,18 @@ class _HomeShellState extends State<HomeShell> {
     ).push(MaterialPageRoute(builder: (_) => _PlaceholderPage(title: title)));
   }
 
-  // Scan = aksi cepat, bukan tab. Nanti diganti membuka scan_screen.dart
-  // (Hari 4); sekarang placeholder.
-  void _onScan() => _openPlaceholder('Scan');
+  // Scan = aksi cepat, bukan tab: langsung membuka scan_screen.dart. Hasilnya
+  // true bila koin tersimpan, supaya pengguna diberi kabar di Beranda.
+  Future<void> _onScan() async {
+    final saved = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const ScanScreen()));
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Koin disimpan ke Koleksi.')),
+      );
+    }
+  }
 
   // Keluar tidak punya halaman: tampilkan dialog, dan indeks tab aktif
   // tidak diubah supaya kalau dibatalkan pengguna tetap di tab semula.
