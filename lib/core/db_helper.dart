@@ -31,14 +31,55 @@ class DbHelper {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         // Wajib dinyalakan manual di sqflite, beda dari SQLite
         // command-line yang sudah default ON.
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  // Migrasi versi database (NUMISMA_GUIDE 0.5, Bagian 5.1).
+  // v1 -> v2: acara kolektor menjadi buatan pengguna (events + user_id)
+  // dan reminders kehilangan kolom notif_id. Kedua tabel pada v1 hanya
+  // berisi data seed atau kosong, jadi dibuang lalu dibuat ulang agar
+  // skemanya sama persis dengan instalasi baru. Tabel lain (users, coins,
+  // dst.) TIDAK disentuh. reminders dibuang lebih dulu karena ia
+  // merujuk ke events.
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('DROP TABLE IF EXISTS reminders');
+      await db.execute('DROP TABLE IF EXISTS events');
+      await _createEventTables(db);
+    }
+  }
+
+  // Dipakai onCreate (HP bersih) dan onUpgrade (HP yang naik dari v1),
+  // supaya kedua jalur menghasilkan skema yang sama.
+  Future<void> _createEventTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        title TEXT NOT NULL,
+        start_utc TEXT NOT NULL,
+        location TEXT
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_events_user ON events(user_id)');
+
+    // Satu acara maksimal satu pengingat (dijaga kode). Id notifikasi
+    // Android = events.id, jadi tidak perlu kolom sendiri.
+    await db.execute('''
+      CREATE TABLE reminders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL REFERENCES events(id),
+        remind_at TEXT NOT NULL
+      )
+    ''');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -95,24 +136,8 @@ class DbHelper {
       )
     ''');
 
-    await db.execute('''
-      CREATE TABLE events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        start_utc TEXT NOT NULL,
-        location TEXT,
-        note TEXT
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE reminders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_id INTEGER NOT NULL REFERENCES events(id),
-        notif_id INTEGER NOT NULL,
-        remind_at TEXT NOT NULL
-      )
-    ''');
+    // events dan reminders (skema v2) dibuat di _createEventTables.
+    await _createEventTables(db);
 
     await db.execute('''
       CREATE TABLE rates_cache (

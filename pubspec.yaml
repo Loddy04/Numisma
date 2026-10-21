@@ -36,4 +36,3 @@ flutter:
   assets:
     - .env
     - assets/seed/currencies_seed.json
-    - assets/seed/events_seed.json

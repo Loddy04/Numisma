@@ -10,6 +10,10 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Wajib untuk flutter_local_notifications: "penerjemah" yang
+        // membuat API Java modern (dipakai plugin untuk menjadwalkan
+        // notifikasi) tetap jalan di Android versi lama (README plugin).
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -23,6 +27,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Dianjurkan README plugin bersama desugaring.
+        multiDexEnabled = true
     }
 
     buildTypes {
@@ -46,6 +52,12 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
+
+dependencies {
+    // Pasangan isCoreLibraryDesugaringEnabled; versi sesuai README
+    // flutter_local_notifications 22.3.2.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 flutter {

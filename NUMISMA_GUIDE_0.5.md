@@ -9,7 +9,7 @@
 | Mata kuliah | Pemrograman Aplikasi Mobile |
 | Pengerjaan | Individu |
 | Penyusun | [Nama] / [NIM] |
-| Versi dokumen | 1.1 (19 Oktober 2026) |
+| Versi dokumen | 0.5 (21 Oktober 2026, Hari 3) — lanjutan 0.4, menambal: acara kolektor manual per akun (tanpa seed acara, `events` + `user_id`, DB v2), notifikasi dengan pilihan selisih dan alarm eksak (+ jadwal ulang saat aplikasi dibuka), kurs 44 mata uang + Nilai Koleksi, Jam Dunia satu jam + zona (WIB/WITA/WIT/UTC, London opsional); kolom `events.note` dan `reminders.notif_id` dihapus; LBS digabung dengan acara (satu peta dua lapisan) dengan migrasi v3 `events.lat/lng` direncanakan Hari 5. Bagian yang berubah ditandai **[0.5]** |
 | Hari 1 | Senin, 19 Oktober 2026 |
 | Tenggat | Hari ke-7 = Minggu, 25 Oktober 2026 (konfirmasi ke dosen bila hitungan berbeda) |
 | Rencana | Hari 1-5 aplikasi, hari 6-7 laporan dan PPT |
@@ -101,6 +101,7 @@ Foto koin (kamera atau galeri) → AI membaca gambar → hasil muncul di form ya
 5. Ada web service/API (boleh sampai IoT, games, atau multiplatform) serta fasilitas LBS terkait tema
 6. Bottom navigation: menu profil (ada gambar), menu saran dan kesan mata kuliah Pemrograman Aplikasi Mobile, menu logout
 7. Menu tambahan konversi mata uang (min. 3 mata uang) dan konversi waktu (min. WIB, WIT, WITA, London) yang terpadu dengan konsep
+   > **[0.5] Catatan pemilik proyek:** zona yang disebut dosen adalah **contoh**, bukan daftar wajib. Aplikasi memakai WIB, WITA, WIT, dan UTC sebagai empat zona utama; London ditambahkan sebagai pilihan opsional (lihat 7.7b). Bila dosen menegaskan London wajib, London sudah tersedia.
 8. Minimal 2 sensor (accelerometer, gyroscope, dll) sesuai konsep
 9. Fitur/fasilitas AI dan fitur LLM sesuai tema
 10. Fitur mini games sederhana terkait konsep
@@ -125,12 +126,12 @@ Pengguna mengonfirmasi bahwa **semua poin di atas wajib**.
 | K4 | DB lokal dan online | SQLite + Supabase (Unggah dan Pulihkan) | Tabel di kedua DB, T18 | 7.4 |
 | K5 | Web service/API + LBS | Frankfurter, Gemini, Supabase REST; LBS spot kolektor | Panggilan API di laporan, peta, T19 | 6, 7.5 |
 | K6 | Bottom nav: profil (gambar), saran-kesan, logout | 5 ikon (Beranda grid, Profil, Scan tengah, Saran & Kesan, Keluar); foto profil; form saran dan kesan; dialog logout | Screenshot tiap tab, T21 | 7.6 |
-| K7 | Konversi uang (min. 3) dan waktu (4 zona), terpadu konsep | Kurs 8 mata uang + Nilai Koleksi; jam dunia WIB/WITA/WIT/London + jadwal acara kolektor | T10, T11 | 7.7 |
+| K7 | Konversi uang (min. 3) dan waktu (4 zona), terpadu konsep | Kurs 44 mata uang (pemilih dari JSON) + Nilai Koleksi; Jam Dunia (WIB/WITA/WIT/UTC, London opsional) + acara kolektor buatan pengguna | T10, T11, T25, T26 | 7.7 |
 | K8 | Minimal 2 sensor | Accelerometer (goyang = Coin Flip, mini-toy terpisah), gyroscope (tilt pada foto item koleksi asli, koin/uang kertas). GPS dihitung terpisah untuk LBS | T12, T13 | 7.8 |
 | K9 | AI dan LLM | Gemini Vision (scan koin) dan chatbot "Tanya Numisma" | T14, T15 | 7.9 |
 | K10 | Mini game | "Tebak Asal Koin" (10 soal) + "Coin Flip" (goyang HP, head/tail random) | T16 | 7.10 |
 | K11 | Pencarian dan pemilihan | Cari, filter, urut, multi-pilih di Koleksi | T09 | 7.11 |
-| K12 | Notifikasi mobile | Notifikasi lokal pengingat acara + tombol uji | T20, T24 | 7.12 |
+| K12 | Notifikasi mobile | Notifikasi lokal pengingat acara (pilihan selisih waktu, alarm eksak) + tombol uji | T20, T24, T27, T28 | 7.12 |
 | K13 | Blockchain sederhana | Jejak Catatan: hash chain SHA-256 + proof-of-work ringan + verifikasi | T17, T18 | 7.13 |
 | L | Laporan | Kerangka di Bagian 11.2 | Dokumen cetak | 11 |
 | P | Presentasi | Alur demo di Bagian 11.1 | Demo langsung + video cadangan | 11 |
@@ -160,6 +161,7 @@ Semua paket dipasang dengan `flutter pub add <nama>` (versi terbaru yang kompati
 | Notifikasi | `flutter_local_notifications`, `timezone` | Jadwalkan dengan `TZDateTime` dalam UTC agar tidak perlu mendeteksi zona perangkat |
 | Format tanggal | `intl` | |
 | Izin runtime | `permission_handler` (opsional) | `geolocator` dan `image_picker` sudah meminta izinnya sendiri |
+| Potong foto | `crop_your_image` | Layar potong digambar di dalam Flutter sendiri (bukan membuka aktivitas Android terpisah seperti `image_cropper`), supaya proses aplikasi tidak berisiko dimatikan sistem saat kembali dari cropper (lihat Bagian 12) |
 
 **Pengaturan Android yang sering lupa:**
 - `AndroidManifest.xml`: izin `INTERNET`, `USE_BIOMETRIC`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `POST_NOTIFICATIONS`, `CAMERA`.
@@ -167,6 +169,7 @@ Semua paket dipasang dengan `flutter pub add <nama>` (versi terbaru yang kompati
 - `minSdk` sesuai persyaratan paket (umumnya 21-24); baca pesan error build.
 - `flutter_local_notifications` biasanya meminta *core library desugaring*; ikuti README paketnya.
 - Notifikasi Android 13+ perlu izin `POST_NOTIFICATIONS` saat runtime.
+- **[0.5]** Alarm eksak: Android 13+ umumnya tidak memberi izin alarm eksak otomatis; pengguna mungkin harus mengaktifkannya di Pengaturan ("Alarm & pengingat"). Nama izin, receiver boot, dan versi Android yang terkena **belum diverifikasi**; baca README `flutter_local_notifications` versi terpasang sebelum menulis kode (lihat 7.12 dan 13.2).
 
 ### 3.1 Rahasia lewat `.env`
 
@@ -231,7 +234,7 @@ Aturan alur: **screen → service → db_helper**. Layar tidak boleh memanggil d
 numisma/
   .env                        # TIDAK di-commit (lihat Bagian 3.1)
   .env.example                # Di-commit, nilai kosong
-  assets/seed/  coins_seed.json  events_seed.json  spots_seed.json
+  assets/seed/  coins_seed.json  spots_seed.json  currencies_seed.json   # [0.5] events_seed dihapus
   lib/
     main.dart                  # inisialisasi (dotenv, db, supabase, notifikasi, timezone)
     app.dart                   # tema, rute
@@ -242,6 +245,7 @@ numisma/
       session_store.dart       # shared_preferences: user_id, token, expires_at
       crypto_util.dart         # bcrypt, AES, SHA-256
       time_util.dart           # konversi zona waktu
+      format_util.dart         # [0.5] format angka dan tanggal bersama
     models/  user.dart  coin.dart  block.dart  event.dart
     services/
       auth_service.dart        biometric_service.dart   coin_repo.dart
@@ -254,7 +258,8 @@ numisma/
       collection/  collection_screen.dart  coin_form_screen.dart  coin_detail_screen.dart
       scan/        scan_screen.dart
       chain/       chain_screen.dart              # Jejak Catatan
-      convert/     convert_screen.dart  (tab Kurs + tab Jam Dunia)
+      convert/     convert_screen.dart  (3 tab: Kurs, Nilai Koleksi, Jam Dunia)   # [0.5]
+                   collection_value_tab.dart  world_clock_tab.dart  event_form_screen.dart
       explore/     explore_screen.dart
       profile/     profile_screen.dart
       feedback/    feedback_screen.dart
@@ -340,20 +345,20 @@ CREATE TABLE chain_blocks (
   UNIQUE (user_id, idx)
 );
 
-CREATE TABLE events (               -- acara kolektor (data CONTOH untuk demo)
+CREATE TABLE events (               -- [0.5] acara kolektor BUATAN PENGGUNA (tanpa seed)
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
   title TEXT NOT NULL,
-  start_utc TEXT NOT NULL,
-  location TEXT,
-  note TEXT
-);
+  start_utc TEXT NOT NULL,          -- ISO-8601 UTC
+  location TEXT                     -- nama tempat (teks); lat/lng menyusul di migrasi v3 (Hari 5, lihat 7.5)
+);                                  -- [0.5] kolom `note` DIHAPUS (tidak punya isian di form)
+CREATE INDEX idx_events_user ON events(user_id);
 
-CREATE TABLE reminders (
+CREATE TABLE reminders (            -- [0.5] satu acara maksimal satu pengingat (dijaga kode)
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   event_id INTEGER NOT NULL REFERENCES events(id),
-  notif_id INTEGER NOT NULL,
-  remind_at TEXT NOT NULL
-);
+  remind_at TEXT NOT NULL           -- selisih "sebelum acara" = start_utc - remind_at, tidak disimpan
+);                                  -- [0.5] kolom `notif_id` DIHAPUS: id notifikasi Android = event_id
 
 CREATE TABLE rates_cache (
   base TEXT NOT NULL,
@@ -385,6 +390,12 @@ CREATE TABLE feedback (
 Catatan desain:
 - `email_enc` dan `notes_enc` terenkripsi, jadi **pencarian tidak mencakup kolom itu**. Login memakai `username` (bukan email).
 - Foto disimpan sebagai file di folder aplikasi; tabel hanya menyimpan path.
+
+**[0.5] Versi database naik dari 1 ke 2** (hanya `events` berubah, `reminders` dibuat ulang agar urutannya benar).
+- `onUpgrade` 1→2: `DROP TABLE reminders`, `DROP TABLE events`, lalu buat ulang keduanya. Aman karena keduanya hanya berisi data seed atau kosong. Tabel lain tidak disentuh.
+- **`onCreate` wajib memakai skema v2 juga** (untuk HP yang bersih, mis. HP penguji). Uji kedua jalur: instal baru dan upgrade dari v1.
+- `events` dan `reminders` **tidak ikut sinkron Supabase** (tetap hanya `coins`, `chain_blocks`, `collector_spots`).
+- **[0.5] Migrasi v3 (direncanakan Hari 5, saat peta dibuat):** `ALTER TABLE events ADD COLUMN lat REAL` dan `ADD COLUMN lng REAL` (boleh NULL; acara lama tetap valid tanpa titik). Tidak ada tabel yang dibuat ulang, jadi data tidak hilang. `onCreate` pada saat itu juga wajib memakai skema v3.
 
 ### 5.2 Supabase (online)
 Jalankan di SQL Editor. Anon key harus bisa `select`, `insert`, `update` pada tabel ini. Atur RLS sesuai kebutuhan demo (nonaktif atau policy permisif) dan **catat sebagai keterbatasan keamanan**.
@@ -437,7 +448,8 @@ create table collector_spots (
 ### 5.3 Data seed (aset lokal)
 Format di Lampiran C. Isi:
 - `coins_seed.json`: 30-50 koin dan uang kertas contoh (dipakai mini game dan data demo). Data contoh, bukan klaim katalog.
-- `events_seed.json`: 5 acara kolektor **contoh** (diberi label "contoh"; **jangan mengarang acara nyata**).
+- ~~`events_seed.json`~~ **[0.5] dihapus.** Acara dibuat manual oleh pengguna; daftar awalnya kosong (tampilkan keadaan kosong yang jelas).
+- `currencies_seed.json`: 44 mata uang (`code`, `name`, `country`), dibaca langsung dari asset lewat `CurrencyService` (bukan dimasukkan ke SQLite).
 - `spots_seed.json`: 5-10 spot yang **sudah diverifikasi sendiri**. Bila belum diverifikasi, tandai `verified: false` dan beri label "belum diverifikasi" di UI.
 
 ---
@@ -455,7 +467,10 @@ Format di Lampiran C. Isi:
 - Kurs hanya diperbarui **hari kerja**. Akhir pekan memakai kurs terakhir.
 - **Belum diverifikasi:** bentuk JSON respons persis dan batas laju. **Panggil dengan `curl` dan lihat bentuk JSON-nya sebelum menulis parser.**
 - **Strategi:** panggil per pasangan (`/rate/{dari}/{ke}`), simpan di `rates_cache` (TTL 6 jam). Saat offline atau API gagal, pakai cache dan tampilkan `rate_date`.
-- **Daftar mata uang di UI (tetap, 8):** IDR, USD, EUR, JPY, GBP, SGD, MYR, KRW. Koin dengan `currency_code` di luar daftar tampil "nilai tidak tersedia".
+- **[0.5] Daftar mata uang di UI: 44** (`assets/seed/currencies_seed.json`; menggantikan "tetap, 8"). Terverifikasi 21 Okt 2026: ke-44 kode didukung Frankfurter v2. Koin dengan kode di luar yang didukung API (atau kode manual "Lainnya…") tampil "nilai tidak tersedia" dan **tidak dijumlahkan** (dihitung sebagai "dilewati").
+- **[0.5] Bentuk respons** `GET /v2/rate/{dari}/{ke}` (hasil `curl` 21 Okt 2026): `{"date":"2026-10-20","base":"JPY","quote":"IDR","rate":113.88}`. `rate` bisa bertipe int, jadi parse lewat `num`.
+- **[0.5] Ketelitian kurs:** Frankfurter membulatkan kurs kasar (mis. IDR→EUR hanya `4.9e-05`). Aturan: bila kurs langsung < 1, minta arah sebaliknya lalu balik (1/kurs).
+- **[0.5]** `getRateInfo(from, to, {forceRefresh})`: cache 6 jam; `forceRefresh` (tarik-untuk-menyegarkan) melewati cache, dan bila API gagal tetap memakai cache lama dengan tanda "dari cache".
 - Mata uang lama yang sudah tidak berlaku (mis. mark Jerman, gulden Belanda) tidak ada di daftar. **Opsional:** tabel kecil kurs tetap konversi ke euro (cek angkanya di sumber resmi ECB sebelum dipakai). Versi minimum: tampilkan "nilai tidak tersedia".
 
 ### 6.2 Gemini API (REST)
@@ -515,9 +530,13 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
 - **Online:** dua tombol di Koleksi:
   - **Unggah:** kirim koin `is_synced=0` dan blok rantai `is_synced=0` ke Supabase (`upsert`, `user_key` = username), lalu tandai `is_synced=1`.
   - **Pulihkan:** ambil koin dan blok milik username itu dari Supabase, masukkan yang belum ada di lokal. Foto tidak ikut (tampilkan placeholder).
-- **Koin yang sudah dihapus tidak boleh hidup lagi saat Pulihkan.** Menghapus koin di lokal tidak menghapus barisnya di Supabase (kontrak `sync_service` hanya `upload`/`restore`, tanpa `delete` ke Supabase), jadi tanpa aturan ini koin yang dihapus muncul kembali. Aturannya, tanpa ubah skema atau kontrak: di `restore()`, gabungkan blok rantai lokal dan remote, lalu untuk tiap `coin_id` lihat blok dengan `idx` tertinggi. Bila `action`-nya `DELETE`, koin itu **tidak dipulihkan**. Ini berlaku baik blok DELETE-nya sudah terunggah maupun baru ada di lokal. Syaratnya: `CoinRepo.delete` wajib menambah blok `DELETE` ke rantai (Hari 4), dan mengambil data koin dulu sebelum menghapus supaya snapshot-nya bisa masuk ke blok.
-- **Format waktu `ts` harus dinormalkan saat Pulihkan.** Kolom `ts` di Supabase bertipe `timestamptz`, sehingga teks yang dikembalikan bisa berbeda dari teks asli di SQLite (mis. `+00:00` menggantikan `Z`). Karena `ts` ikut rumus `hash` (7.13), perbedaan teks membuat verifikasi gagal pada blok hasil pulihan. Aturannya: sebelum disimpan ke lokal, `ts` dari Supabase di-parse ke `DateTime` UTC lalu dicetak ulang dengan `toUtc().toIso8601String()`, format yang sama saat blok dibuat. **Belum diverifikasi:** bentuk persis `ts` yang dikembalikan Supabase. Cek dengan `curl` ke REST Supabase setelah satu blok terunggah, sebelum menulis parser.
 - **Tanpa penyelesaian konflik.** Tulis di laporan sebagai keterbatasan.
+
+> **Perbaikan (ditemukan lewat audit guide + ditemukan ulang secara independen saat implementasi Hari 2, ditambal 21 Okt — kodenya dikerjakan Hari 4-5):**
+> - **Koin terhapus tidak boleh "hidup lagi" saat Pulihkan.** Tanpa perbaikan, koin yang sudah dihapus lokal (padahal pernah di-Unggah) akan dianggap "belum ada di lokal" dan masuk lagi saat Pulihkan. **Perbaikan:** sebelum memasukkan satu koin ke lokal, `restore()` cek blok rantai **terakhir** untuk `coin_id` itu (gabungan blok lokal + remote, urut `idx`) — kalau aksi terakhirnya `DELETE`, **jangan** dipulihkan. Syarat: `CoinRepo.delete()` wajib membaca data koin dulu (untuk snapshot hash) **sebelum** menghapus baris, dan wajib menambah blok `DELETE` (bukan cuma hapus baris diam-diam).
+> - **Normalisasi format waktu dari Supabase.** Kolom `timestamptz` di Supabase bisa balik dalam format berbeda dari `TEXT ISO-8601 UTC` yang dipakai SQLite. Saat `restore()`, parse dulu nilai `ts`/`created_at`/`updated_at` yang diterima, lalu simpan ulang sebagai `.toUtc().toIso8601String()` supaya format lokal selalu konsisten. **Belum diverifikasi** bentuk string aslinya dari Supabase — cek dengan `curl` ke REST endpoint-nya setelah satu blok terunggah, sebelum menulis parser.
+> - **Selesai bila (tambahan):** hapus koin → Unggah → Pulihkan di perangkat lain/setelah hapus data → koin yang terhapus **tidak** muncul kembali.
+
 - **Selesai bila:** tambah koin → Unggah → hapus data aplikasi → daftar ulang dengan username yang sama → Pulihkan → koleksi dan Jejak Catatan kembali (T18).
 - **File:** `sync_service.dart`.
 
@@ -530,6 +549,9 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
   4. Bila tidak ada spot dalam 50 km, tampilkan yang terdekat beserta jaraknya.
   5. **Lokasi manual:** tekan lama pada peta untuk menetapkan posisi (untuk GPS lemah di dalam ruangan).
   6. Spot `verified=false` diberi label "belum diverifikasi".
+  7. **[0.5] Satu peta, dua lapisan:** selain marker spot kolektor, peta menampilkan **marker acara milik pengguna** yang punya titik lokasi (`events.lat`/`lng`, migrasi v3 di 5.1), dengan jarak dari posisi GPS pengguna dan urutan terdekat. Spot kolektor **tidak digantikan** acara: LBS adalah layanan berbasis **posisi pengguna** (GPS, jarak, terdekat), dan spot memberi isi yang bermakna saat demo; memilih titik saja bukan LBS.
+  8. **[0.5] Pemilih lokasi di form acara** memakai komponen peta yang sama (tekan lama pada peta menetapkan titik, seperti lokasi manual di poin 5). Nama tempat tetap diketik manual karena geocoding (Nominatim) di luar lingkup (Bagian 1.5).
+  9. **[0.5] Opsional, paling akhir bila Hari 5 ada sisa waktu:** tombol "Buka di Google Maps" lewat tautan koordinat (paket `url_launcher`, **tanpa** SDK Google Maps dan tanpa API key). Ini menambah di luar lingkup Bagian 1.5, jadi dicatat sebagai keputusan sengaja.
 - **Selesai bila:** T19.
 - **File:** `spot_service.dart`, `explore_screen.dart`.
 
@@ -542,18 +564,22 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
 
 ### 7.7 K7 — Konversi mata uang dan waktu (terpadu konsep)
 
-**a. Kurs dan Nilai Koleksi**
-- Input jumlah, pilih mata uang asal dan tujuan (8 mata uang, Bagian 6.1), hasil langsung, tampilkan tanggal kurs.
-- **Nilai Koleksi:** untuk tiap koin, `denomination × kurs(currency_code → mata uang tujuan)`, dijumlahkan. Tampilkan total dalam IDR dan satu mata uang pilihan. **Label wajib: "nilai nominal setara".**
-- Offline atau akhir pekan → pakai `rates_cache` dan tampilkan tanggal kurs.
+**a. Kurs dan Nilai Koleksi** (convert_screen.dart punya 3 tab: Kurs, Nilai Koleksi, Jam Dunia)
+- Tab **Kurs**: jumlah, mata uang asal dan tujuan (pemilih 44 mata uang, Bagian 6.1), tombol Tukar, hasil langsung, tanggal kurs.
+- Tab **Nilai Koleksi**: total `denomination × kurs(currency_code → mata uang tujuan)` seluruh koleksi dalam **IDR** dan satu mata uang pilihan. Kurs diambil sekali per mata uang berbeda. **Label wajib: "nilai nominal setara".** Koin tanpa kurs **tidak dianggap 0**: tampilkan jumlah yang dilewati; tanggal kurs yang ditampilkan adalah yang **terlama**.
+- Offline atau akhir pekan → pakai `rates_cache` dan tampilkan tanggal kurs. Tarik-untuk-menyegarkan ada di tab Kurs, Nilai Koleksi, Jam Dunia, dan daftar Koleksi.
 
-**b. Jam Dunia dan Acara**
-- Empat kartu jam (perbarui tiap detik): **WIB** (`Asia/Jakarta`), **WITA** (`Asia/Makassar`), **WIT** (`Asia/Jayapura`), **London** (`Europe/London`), memakai paket `timezone`.
-- Daftar acara kolektor (`events`, waktu UTC) menampilkan waktu mulai di empat zona.
-- **Uji DST London (T11):** DST London berakhir Minggu 25 Okt 2026.
-  - Acara **20:00 London pada 24 Okt 2026** (BST, UTC+1) = **02:00 WIB 25 Okt 2026** (selisih 6 jam).
-  - Acara **20:00 London pada 26 Okt 2026** (GMT, UTC+0) = **03:00 WIB 27 Okt 2026** (selisih 7 jam).
-- **File:** `rates_service.dart`, `time_util.dart`, `event_repo.dart`, `convert_screen.dart`.
+**b. Jam Dunia dan Acara** [0.5, menggantikan versi lama]
+- **Satu jam** yang berdetak tiap detik (jam:menit:detik, tanggal, singkatan zona). Zona dipilih lewat pilihan: **WIB** (`Asia/Jakarta`), **WITA** (`Asia/Makassar`), **WIT** (`Asia/Jayapura`), **UTC** (`Etc/UTC`; nama `UTC` tidak ada di paket `timezone`), dan **London** (`Europe/London`, **opsional**: bukan wajib, dipertahankan karena membuktikan DST pada T11).
+- **UTC ≠ London.** London = UTC+0 (GMT) di musim dingin, tetapi UTC+1 (BST) di musim panas (sampai 25 Okt 2026). Jangan menyamakan keduanya.
+- **Kartu acara:** tiap kartu menampilkan **satu zona** (jam, tanggal, singkatan) dengan pilihan zona sendiri. Default WIB.
+- **Tambah acara manual** (`event_form_screen.dart`): judul (wajib), lokasi (opsional), tanggal (date picker), jam (time picker). **Jam input dibaca sebagai WIB** (label "Waktu dalam WIB"), lalu disimpan UTC bersama `user_id` akun yang login. Form **tidak punya pilihan zona input** (keputusan 0.5): jam selalu dibaca WIB, dan pengguna melihat waktu acara di zona lain lewat pilihan zona di tiap kartu.
+- **Hapus acara** dengan dialog konfirmasi; sekaligus membatalkan pengingatnya. **Edit acara ditunda** (hapus lalu buat ulang).
+- Acara yang sudah lewat ditandai "Sudah lewat" dan tidak bisa diberi pengingat. Daftar kosong menampilkan teks "Belum ada acara. Tekan + untuk menambah."
+- **Uji DST London (T11)**, otomatis lewat `test/time_util_test.dart`: DST London berakhir Minggu 25 Okt 2026.
+  - **20:00 London pada 24 Okt 2026** (BST, UTC+1) = **02:00 WIB 25 Okt 2026** (selisih 6 jam).
+  - **20:00 London pada 26 Okt 2026** (GMT, UTC+0) = **03:00 WIB 27 Okt 2026** (selisih 7 jam).
+- **File:** `rates_service.dart`, `time_util.dart`, `format_util.dart`, `event_repo.dart`, `convert_screen.dart`, `collection_value_tab.dart`, `world_clock_tab.dart`, `event_form_screen.dart`.
 
 ### 7.8 K8 — Dua sensor
 
@@ -580,23 +606,26 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
 4. Pengguna konfirmasi → simpan koin + tambah blok rantai (`photo_source` = camera atau gallery).
 5. Gagal (kuota, jaringan, JSON tidak valid) → pesan ramah + isi manual + tombol "Gunakan hasil contoh".
 
-**Catatan — tiga jalur menambah koin:** scan bukan satu-satunya cara. Tombol **"Tambah"** di tab Koleksi (beda dari tombol "Scan AI") membuka `coin_form_screen.dart` untuk diisi **manual**: semua field (negara, nominal, tahun, dst) diisi sendiri oleh pengguna, **tanpa** dikirim ke Gemini. Bedanya dengan Scan bukan soal ada-tidaknya foto, tapi soal **siapa yang membaca fotonya**:
+**Catatan — tiga jalur menambah koin, foto WAJIB di ketiganya (keputusan Hari 2, revisi dari rancangan awal):** scan bukan satu-satunya cara. Tombol **"Tambah"** di tab Koleksi (beda dari tombol "Scan AI") membuka `coin_form_screen.dart` untuk diisi **manual**: semua field (negara, nominal, tahun, dst) diisi sendiri oleh pengguna, **tanpa** dikirim ke Gemini. Bedanya dengan Scan bukan soal ada-tidaknya foto, tapi soal **siapa yang membaca fotonya**:
 
 | Jalur | Foto dikirim ke Gemini? | Field diisi oleh |
 |---|---|---|
 | Scan — kamera | Ya | AI (bisa diedit) |
 | Scan — galeri | Ya | AI (bisa diedit) |
-| Tambah manual | **Tidak** — foto (kamera/galeri) tetap **opsional dilampirkan** lewat `image_picker`, hanya tidak diproses AI | Pengguna sepenuhnya |
+| Tambah manual | **Tidak** — foto (kamera/galeri) tetap **wajib dilampirkan** lewat `image_picker` saat **menambah**, hanya tidak diproses AI saat itu | Pengguna sepenuhnya |
 
-Tidak perlu kolom baru: `photo_path`/`photo_source` tetap menandai **asal foto** (independen dari AI), sedangkan `ai_summary` tetap **null** untuk koin manual (menandai "belum/tidak pernah dianalisis AI") — baik yang punya foto maupun tidak. Jejak Catatan tetap mencatat blok `ADD` identik untuk ketiga jalur ini — hash chain tidak membedakan asal data, hanya menghitung hash dari data koin yang akhirnya tersimpan. Berguna untuk koin tanpa foto tersedia, saat offline, atau saat kuota AI habis.
+**Alasan foto diwajibkan (bukan cuma opsional seperti rancangan awal):** supaya **setiap** koin baru — scan maupun manual — bisa dianalisis AI nanti lewat mode konteks koin di Tanya Numisma (7.9b). Kalau data manual ternyata salah atau kurang, AI tetap punya bukti visual untuk mengoreksi, bukan cuma percaya teks yang diketik. Validasi ini **hanya berlaku saat menambah** (`coin_form_screen.dart` mode Tambah) — **tidak** dipaksa saat **mengubah**, karena koin hasil **Pulihkan** dari Supabase (7.4) memang tidak punya foto (foto tidak ikut sinkron) dan harus tetap bisa diedit tanpa dipaksa upload foto baru.
+
+Tidak perlu kolom baru: `photo_path`/`photo_source` tetap menandai **asal foto** (independen dari AI), sedangkan `ai_summary` tetap **null** untuk koin manual (menandai "belum/tidak pernah dianalisis AI"). Jejak Catatan tetap mencatat blok `ADD` identik untuk ketiga jalur ini — hash chain tidak membedakan asal data, hanya menghitung hash dari data koin yang akhirnya tersimpan.
 
 **b. Chatbot "Tanya Numisma" (LLM)** — `chat_screen.dart`
 - **Mode umum:** dibuka dari grid Beranda, tanya jawab numismatik umum dengan prompt sistem Lampiran B.2. Riwayat percakapan di memori selama sesi (kirim maksimal 10 pesan terakhir).
 - **Mode konteks koin (fitur "Tanya Numisma tentang koin ini"):** tombol di `coin_detail_screen.dart` membuka `chat_screen.dart` dengan parameter opsional `contextCoin`. Saat ada `contextCoin`:
   1. Baca file foto dari `photo_path` koin itu **kalau ada** (apapun asalnya — scan atau dilampirkan manual) dan field data yang tersimpan saat ini (`country`, `currency_code`, `denomination`, `year`, `condition`, `ai_summary` bila terisi).
-  2. Kirim foto (bila ada) + ringkasan data itu sebagai bagian pesan pertama ke Gemini, sebelum pertanyaan pengguna. Untuk koin hasil Scan, ini berarti AI **melihat ulang** gambar yang sama (bukan cuma percaya teks hasil scan sebelumnya). Untuk koin manual yang dilampiri foto tapi `ai_summary` masih null, ini justru **kali pertama** AI melihat fotonya — mekanismenya sama, cuma "dulunya belum pernah dianalisis AI". Kalau koin manual itu sama sekali tidak punya foto, AI hanya punya teks yang diisi pengguna, tanpa bukti visual untuk dicek ulang.
-  3. **Revisi tetap manual:** kalau dari obrolan AI menyarankan data berbeda dari yang tersimpan, pengguna harus membuka sendiri `coin_form_screen.dart` (tombol Edit) untuk mengubahnya. Chat **tidak** menulis balik ke database secara otomatis — supaya pengguna tetap mengonfirmasi setiap perubahan data (konsisten dengan Bagian 1.6) dan implementasinya tetap sederhana (tidak perlu function-calling/tool-use dari Gemini ke database).
-  4. Tanda tangan `gemini_service.chat(history, userMessage)` di Bagian 8 **tidak berubah** — koin opsional ini cuma menambah isi pesan pertama di `chat_screen.dart`, bukan mengubah kontrak service.
+  2. Kirim foto (bila ada) + ringkasan data itu sebagai bagian pesan pertama ke Gemini, sebelum pertanyaan pengguna. Untuk koin hasil Scan, ini berarti AI **melihat ulang** gambar yang sama (bukan cuma percaya teks hasil scan sebelumnya). Untuk koin manual yang dilampiri foto tapi `ai_summary` masih null, ini justru **kali pertama** AI melihat fotonya — mekanismenya sama, cuma "dulunya belum pernah dianalisis AI", dan karena foto **wajib** saat menambah (lihat 7.9a), ini berlaku untuk hampir semua koin manual.
+  3. **Pengecualian tanpa foto sama sekali — hanya koin hasil Pulihkan dari Supabase** (7.4): karena foto tidak ikut sinkron, koin yang dipulihkan bisa punya `photo_path = null` meski aslinya pernah ada foto di perangkat lain. Untuk koin seperti ini, AI cuma punya teks yang tersimpan, tanpa bukti visual untuk dicek ulang.
+  4. **Revisi tetap manual:** kalau dari obrolan AI menyarankan data berbeda dari yang tersimpan, pengguna harus membuka sendiri `coin_form_screen.dart` (tombol Edit) untuk mengubahnya. Chat **tidak** menulis balik ke database secara otomatis — supaya pengguna tetap mengonfirmasi setiap perubahan data (konsisten dengan Bagian 1.6) dan implementasinya tetap sederhana (tidak perlu function-calling/tool-use dari Gemini ke database).
+  5. Tanda tangan `gemini_service.chat(history, userMessage)` di Bagian 8 **tidak berubah** — koin opsional ini cuma menambah isi pesan pertama di `chat_screen.dart`, bukan mengubah kontrak service.
 - **Selesai bila:** T14, T15.
 - **File:** `gemini_service.dart`, `chat_screen.dart`, `coin_detail_screen.dart`.
 
@@ -620,12 +649,23 @@ Tidak perlu kolom baru: `photo_path`/`photo_source` tetap menandai **asal foto**
 - **Selesai bila:** T09.
 - **File:** `coin_repo.dart`, `collection_screen.dart`.
 
-### 7.12 K12 — Notifikasi
-- Di daftar acara, tombol **"Ingatkan saya"** menjadwalkan notifikasi lokal 1 jam sebelum acara (simpan di `reminders`).
-- Penjadwalan tidak presisi (tanpa izin alarm eksak). Karena bisa terlambat beberapa menit, sediakan tombol **"Kirim notifikasi uji sekarang"** dan **"Uji dalam 10 detik"** untuk demo.
-- Android 13+: minta izin `POST_NOTIFICATIONS`.
-- **Selesai bila:** T20, T24.
-- **File:** `notif_service.dart`.
+### 7.12 K12 — Notifikasi [0.5, menggantikan versi lama]
+- **Pengingat per acara:** tombol **"Ingatkan saya"** dengan pilihan cepat (5 menit, 15 menit, 30 menit, 1 jam, 1 hari) dan **"Atur sendiri"** (angka + menit/jam). Disimpan di `reminders`; satu acara maksimal satu pengingat (pasang baru = ganti baris lama).
+- **Cara hitung:** `waktu_pengingat = start_utc − selisih`. Pengguna memilih **selisih**, bukan jam alarm. Di "Atur sendiri": angka (minimal 1) + satuan (menit/jam/hari). Id notifikasi Android = `event_id` (tabel `reminders` tidak punya kolom `notif_id`).
+- **Alarm eksak** (`zonedSchedule` dengan mode eksak): jadwal diserahkan ke sistem Android, jadi **hampir tepat waktu dan tetap muncul walau aplikasi ditutup** (digeser dari recents). Syarat: pembatasan baterai HP dimatikan (Bagian 12) dan izin alarm eksak aktif.
+  - **Izin alarm eksak:** bila belum aktif, aplikasi **mengarahkan pengguna ke pengaturannya**. Bila tetap ditolak, penjadwalan **turun ke mode tidak eksak** (bisa terlambat beberapa menit) dan memberi tahu pengguna, tidak gagal diam-diam.
+  - Nama izin dan receiver persis (alarm eksak, `RECEIVE_BOOT_COMPLETED`, receiver boot plugin, desugaring) **belum diverifikasi**: cek README `flutter_local_notifications` versi terpasang (22.3.2) sebelum menulis kode.
+- **Keadaan pengingat di kartu** (diturunkan dari waktu; baris `reminders` tidak dihapus sendiri):
+  - `remind_at` di masa depan → "Pengingat: N menit sebelum" + tombol **Batalkan**.
+  - `remind_at` sudah lewat, acara belum mulai → "Pengingat sudah lewat" + tombol **Ingatkan lagi**.
+  - Acara sudah mulai → "Sudah lewat", tanpa tombol pengingat.
+- **Validasi:** pengingat harus di masa depan; bila tidak, pesan jelas (bukan error).
+- Baris `reminders` dihapus hanya saat **Batalkan**, **hapus acara**, atau **diganti** pengingat baru.
+- **Jadwalkan ulang saat aplikasi dibuka:** setelah `NotifService.init`, semua `reminders` dengan `remind_at` di masa depan dijadwalkan ulang (id sama, tanpa ganda). Perlu karena **force-stop membatalkan semua alarm**; pengingat yang jatuh tempo selama force-stop tidak bisa muncul (perilaku Android).
+- **Tombol uji tetap:** **"Kirim notifikasi uji sekarang"** dan **"Uji dalam 10 detik"** (memakai jalur penjadwalan yang sama, jadi membuktikan "jalan saat aplikasi ditutup").
+- Android 13+: minta `POST_NOTIFICATIONS` saat runtime.
+- **Selesai bila:** T20, T24, T27, T28.
+- **File:** `notif_service.dart`, `event_repo.dart`, `convert_screen.dart`.
 
 ### 7.13 K13 — Jejak Catatan (blockchain sederhana)
 **Tujuan:** setiap penambahan, perubahan, atau penghapusan koin dicatat sebagai blok yang terhubung lewat hash. Perubahan data di luar rantai terdeteksi.
@@ -633,13 +673,11 @@ Tidak perlu kolom baru: `photo_path`/`photo_source` tetap menandai **asal foto**
 **Blok:** `idx`, `ts`, `coin_id`, `action` (GENESIS/ADD/UPDATE/DELETE), `data_hash`, `photo_hash`, `photo_source`, `prev_hash`, `nonce`, `hash`.
 
 **Aturan hash:**
-- `data_hash` = SHA-256 dari **JSON kanonik** (kunci terurut) snapshot koin berisi `id, type, country, currency_code, denomination, year, condition, buy_price, buy_currency`. **Jangan** menyertakan `notes_enc`, `ai_summary`, `photo_path`, atau timestamp (ciphertext AES berubah tiap enkripsi karena IV acak).
+- `data_hash` = SHA-256 dari **JSON kanonik** (kunci terurut) snapshot koin berisi `id, type, country, currency_code, denomination, year, condition, buy_price, buy_currency`. **Jangan** menyertakan `notes_enc`, `ai_summary`, `photo_path`, atau timestamp (ciphertext AES berubah tiap enkripsi karena IV acak). **Jaga tipe data** tiap field tetap sama (`double` tetap `double`, `int` tetap `int`) saat membuat snapshot — kalau sekali dibuat sebagai `"100"` (string) dan lain kali `100` (angka), hash-nya beda walau nilainya "sama", dan verifikasi akan salah mengira data berubah.
 - `photo_hash` = SHA-256 byte foto saat koin ditambahkan atau diubah.
-- `hash` = SHA-256 dari gabungan `idx|ts|coin_id|action|data_hash|photo_hash|photo_source|prev_hash|nonce`.
-- **Nilai kosong (null) selalu ditulis sebagai string kosong `""`** saat digabung ke rumus `hash`. Berlaku untuk semua field yang boleh null (`coin_id` pada genesis, `photo_hash`, `photo_source`), baik saat membuat blok maupun saat verifikasi, supaya kedua sisi menghasilkan string yang identik. Satu fungsi pembentuk string hash dipakai di kedua tempat itu, tidak ditulis dua kali.
-- **Tipe data snapshot dijaga tetap** agar `data_hash` stabil: `denomination`, `buy_price` selalu `double`, `year` selalu `int` atau null. Data hasil pulihan dari JSON harus dikonversi ke tipe itu sebelum snapshot dihitung ulang (angka JSON seperti `100` bisa terbaca sebagai `int`, sedangkan aslinya `100.0`).
-- **Proof-of-work ringan:** cari `nonce` hingga `hash` diawali `"00"`. Berlaku untuk **semua blok tanpa pengecualian, termasuk genesis**.
-- Blok genesis: `idx=0`, `action=GENESIS`, `prev_hash` = 64 karakter `0`, `coin_id` = null (ditulis `""` di rumus hash). `nonce`-nya dicari dengan proses yang sama seperti blok lain sampai `hash` diawali `"00"`. Dibuat saat registrasi.
+- `hash` = SHA-256 dari gabungan `idx|ts|coin_id|action|data_hash|photo_hash|photo_source|prev_hash|nonce`. **Konvensi nilai `null`:** field manapun yang `null` (misal `coin_id` pada blok genesis, atau `photo_hash`/`photo_source` kalau tidak ada foto) ditulis sebagai **string kosong `""`** saat digabung — bukan `"null"` dan bukan dilewati. Konvensi ini harus persis sama dipakai saat membuat hash maupun saat verifikasi, kalau tidak, hash tidak akan pernah cocok meski datanya benar.
+- **Proof-of-work ringan:** cari `nonce` hingga `hash` diawali `"00"`. **Berlaku untuk SEMUA blok tanpa kecuali, termasuk blok genesis** — genesis juga harus melalui pencarian nonce yang sama. Kalau genesis dilewatkan dari PoW, verifikasi akan selalu gagal di blok 0 untuk setiap akun.
+- Blok genesis: `idx=0`, `action=GENESIS`, `coin_id=null` (→ `""` saat dihash, lihat konvensi di atas), `prev_hash` = 64 karakter `0`, **tetap dicari nonce-nya sampai hash diawali `"00"`**. Dibuat saat registrasi.
 
 **Verifikasi rantai (tombol "Verifikasi"):**
 1. Urutkan blok per `idx`. Tiap blok: hitung ulang `hash` dan cocokkan; cek diawali `"00"`; cek `prev_hash` sama dengan `hash` blok sebelumnya.
@@ -700,15 +738,29 @@ Future<String> chat(List<ChatMsg> history, String userMessage);
 Future<SyncResult> upload(User user);
 Future<SyncResult> restore(User user);
 
-// notif_service.dart
+// event_repo.dart  [0.5 baru]
+Future<List<Event>> list(int userId);
+Future<Event> add({required int userId, required String title, required DateTime startUtc, String? location});
+Future<void> delete(int eventId);
+
+// notif_service.dart  [0.5: parameter selisih]
 Future<void> init();
-Future<void> scheduleEventReminder(Event event);            // 1 jam sebelum
+Future<void> scheduleEventReminder(Event event, Duration before);
+Future<void> cancelEventReminder(int eventId);
+Future<void> rescheduleAll();                               // dipanggil setelah init
 Future<void> showTestNow();
 Future<void> showTestIn(Duration d);
 
+// rates_service.dart  [0.5 tambahan, parameter opsional]
+Future<RateInfo> getRateInfo(String from, String to, {bool forceRefresh = false});
+Future<CollectionValue> valueOfCoins(List<Coin> coins, String target, {bool forceRefresh = false});
+
 // time_util.dart
-DateTime toZone(DateTime utc, String zoneName);             // Asia/Jakarta, Asia/Makassar, Asia/Jayapura, Europe/London
+DateTime toZone(DateTime utc, String zoneName);             // Asia/Jakarta, Asia/Makassar, Asia/Jayapura, Etc/UTC, Europe/London
 String formatZone(DateTime utc, String zoneName);
+String formatZoneTime(DateTime utc, String zoneName);       // [0.5] "02:00"
+String formatZoneDate(DateTime utc, String zoneName);       // [0.5] "25 Okt 2026"
+String formatClock(DateTime utc, String zoneName);          // [0.5] "14:05:09"
 ```
 
 ---
@@ -721,7 +773,7 @@ Hari ini (19 Okt) tinggal sisa sore dan malam, jadi biometrik digeser ke hari 2.
 |---|---|---|---|
 | 1 | Sen 19 Okt | `flutter doctor` dan tes di HP, akun Supabase dan Gemini, buat proyek dan paket, `theme.dart`, skema SQLite lengkap, register/login (bcrypt) + session. Tes 1 foto koin di AI Studio. Buat kerangka laporan | Daftar, login, tutup lalu buka tetap login |
 | 2 | Sel 20 Okt | Biometrik, AES, bottom nav, Profil (foto), Saran dan Kesan, Logout, CRUD koleksi, cari dan filter | Aplikasi utuh dan berguna offline |
-| 3 | Rab 21 Okt | Kurs v2 + cache, konversi, Nilai Koleksi, jam dunia + acara, notifikasi, sensor | Konversi dan jam benar, notifikasi uji muncul |
+| 3 | Rab 21 Okt | Kurs v2 + cache, konversi, Nilai Koleksi, jam dunia, acara manual, notifikasi (alarm eksak), sensor gyroscope | Konversi dan jam benar, notifikasi uji muncul |
 | 4 | Kam 22 Okt | Scan Gemini, chatbot, Jejak Catatan (hash chain + PoW), mini game | Alur scan sampai blok baru jalan |
 | 5 | Jum 23 Okt | Sinkron Supabase, peta + spot manual, poles, uji penuh di HP, tabel pengujian, build APK. **Fitur beku di akhir hari** | Semua K1-K13 ada |
 | 6 | Sab 24 Okt | Laporan lengkap, cetak bila perlu | Laporan selesai |
@@ -759,7 +811,7 @@ Format lembar evaluasi (kolom "Hasil aktual" dan "Status" diisi saat menguji di 
 | T08 | CRUD koleksi | Tambah, ubah, hapus koin | Data tersimpan dan terbarui | | |
 | T09 | Cari/pilih | Cari "Japan", filter, multi-pilih | Hasil sesuai, total nilai benar | | |
 | T10 | Kurs | 1.000 JPY ke IDR | Sesuai kurs hari itu, tanggal kurs tampil | | |
-| T11 | Jam dunia | Acara 20:00 London, 24 vs 26 Okt 2026 | WIB 02:00 (25 Okt) vs 03:00 (27 Okt) | | |
+| T11 | Jam dunia | Acara 20:00 London, 24 vs 26 Okt 2026 (lewat `time_util_test.dart`; di layar bila London dipilih) | WIB 02:00 (25 Okt) vs 03:00 (27 Okt) | | |
 | T12 | Sensor | Goyang HP | Koin berputar | | |
 | T13 | Sensor | Miringkan HP | Kartu bergeser | | |
 | T14 | AI scan | Foto koin | Form terisi dan bisa diedit | | |
@@ -768,11 +820,16 @@ Format lembar evaluasi (kolom "Hasil aktual" dan "Status" diisi saat menguji di 
 | T17 | Hash chain | Tombol "Ubah data diam-diam", verifikasi | "Catatan telah diubah" (✘) | | |
 | T18 | Sinkron | Unggah, hapus data, daftar ulang, Pulihkan | Koleksi dan rantai kembali | | |
 | T19 | Peta | Izin lokasi diberikan | Spot terurut jarak; lokasi manual berfungsi | | |
-| T20 | Notifikasi | "Ingatkan saya" pada acara | Notifikasi muncul menjelang acara | | |
+| T20 | Notifikasi | Buat acara 3 menit lagi, "Ingatkan saya" 1 menit sebelum, **tutup aplikasi (geser dari recents)** | Notifikasi muncul hampir tepat waktu | | |
 | T21 | Logout | Keluar | Session terhapus, kembali ke Login | | |
 | T22 | Enkripsi | Buka DB, lihat kolom `email_enc` dan `notes_enc` | Bukan teks asli (ciphertext) | | |
 | T23 | Hash password | Buka DB, lihat `password_hash` | Diawali `$2`, bukan password asli | | |
 | T24 | Notifikasi uji | Tombol uji sekarang | Notifikasi muncul segera | | |
+| T25 | Nilai Koleksi | Koleksi campur mata uang; cocokkan dengan hitungan manual; pilih beberapa koin | Total dan total koin terpilih benar; koin tanpa kurs dilewati dengan keterangan | | |
+| T26 | Acara | Tambah acara, ganti zona tampil, hapus acara | Waktu benar di tiap zona; hapus membatalkan pengingat | | |
+| T27 | Pengingat | Pasang pengingat, force-stop, buka aplikasi lagi | Pengingat di masa depan dijadwalkan ulang dan tetap berbunyi | | |
+| T28 | Pengingat | Pengingat dengan selisih lebih besar dari sisa waktu ke acara | Pesan jelas, tidak error | | |
+| T29 | Migrasi DB | Instal bersih (onCreate) dan upgrade dari v1 | Skema `events` v2 benar di kedua jalur | | |
 
 ---
 
@@ -791,7 +848,7 @@ Format lembar evaluasi (kolom "Hasil aktual" dan "Status" diisi saat menguji di 
 10. Unggah ke Supabase (K4)
 11. Profil (foto), Saran dan Kesan, Logout (K6)
 
-**Persiapan demo di Jogja:** tes koneksi venue, aktifkan hotspot HP cadangan, siapkan hasil contoh AI, isi data spot yang sudah diverifikasi, siapkan **video rekaman cadangan**.
+**Persiapan demo di Jogja:** tes koneksi venue, aktifkan hotspot HP cadangan, siapkan hasil contoh AI, isi data spot yang sudah diverifikasi, siapkan **video rekaman cadangan**, **dan cek H-1 bahwa pembatasan baterai/latar belakang untuk app sudah dinonaktifkan di HP yang dipakai demo** (lihat Bagian 12 — ditemukan di vivo Hari 2, berpotensi muncul lagi di HP manapun kalau settingnya belum diubah).
 
 ### 11.2 Kerangka laporan (sesuai syarat dosen)
 1. **Cover**
@@ -819,6 +876,10 @@ Judul dan identitas · Masalah dan tema · Fitur ringkas · Arsitektur · Tech s
 | Internet venue tidak stabil | Kurs, sinkron, AI gagal | Cache kurs, mode offline, hotspot, video cadangan |
 | GPS lemah di dalam ruangan | Peta kosong | Lokasi manual, tampilkan spot terdekat dengan jarak |
 | Biometrik gagal di emulator | Tidak bisa diuji | Uji di HP asli |
+| HP mematikan proses app di latar belakang (ditemukan di vivo Hari 2 saat buka kamera/galeri) — berpotensi terjadi lagi di HP demo manapun kalau pembatasan baterainya belum diubah | App "Lost connection"/restart mendadak, isian form hilang, bisa terjadi live saat demo | Nonaktifkan pembatasan baterai/latar belakang untuk app di HP yang dipakai, cek H-1 sebelum demo (lihat Bagian 11.1). Uji alur kamera/galeri di build `--release`, bukan cuma debug |
+| Force-stop membatalkan semua alarm **[0.5]** | Pengingat tidak berbunyi | Jadwalkan ulang saat aplikasi dibuka; jelaskan di laporan |
+| Pembatasan baterai vivo menunda alarm walau eksak **[0.5]** | Notifikasi terlambat | Nonaktifkan pembatasan baterai app di HP demo (cek H-1); tombol uji sebagai cadangan |
+| Izin alarm eksak ditolak atau berbeda per versi Android **[0.5]** | Pengingat tidak tepat waktu | Arahkan ke pengaturan, turun ke mode tidak eksak, verifikasi README plugin dan uji di HP asli |
 | Dosen menafsirkan "enkripsi" secara ketat | Poin K2 dipertanyakan | bcrypt + AES, jelaskan bedanya di laporan |
 | Dosen mengharapkan API buatan sendiri | Poin K5 dipertanyakan | Tanyakan ke dosen; bila ya, tambah backend kecil (setengah hari), `sync_service` tinggal diganti |
 | Build error atau konflik versi paket | Waktu habis | Commit `pubspec.lock`, commit per fitur, jangan upgrade paket di tengah jalan |
@@ -840,8 +901,12 @@ Judul dan identitas · Masalah dan tema · Fitur ringkas · Arsitektur · Tech s
 - Numista free plan tidak mencakup pencarian-gambar dan mewajibkan atribusi (tidak dipakai).
 - Paket Flutter `geolocator`, `sensors_plus`, `local_auth` ada dan dikenal untuk fungsi masing-masing.
 
+### 13.1b Terverifikasi tambahan (21 Okt 2026) **[0.5]**
+- Bentuk JSON `/v2/rate`; ke-44 mata uang seed didukung dan aktif; kurs dibulatkan kasar; nama zona `Etc/UTC` valid, `UTC` tidak; DST London lewat tes otomatis.
+
 ### 13.2 Belum diverifikasi (cek sebelum dipakai)
-- Bentuk JSON respons Frankfurter v2 dan batas lajunya.
+- **[0.5]** Izin dan receiver Android untuk alarm eksak (plugin 22.3.2); perilaku notifikasi dan izin alarm eksak di vivo V2318 saat aplikasi ditutup.
+- Batas laju Frankfurter v2 (bentuk JSON sudah terverifikasi, lihat 13.1b).
 - Penulisan field persis request Gemini REST dan pemakaian prompt sistem.
 - Nama method versi terbaru: `sensors_plus`, `local_auth`, `flutter_local_notifications`, `supabase_flutter`, `flutter_map`, `bcrypt`, `encrypt`, `flutter_dotenv`.
 - Kebijakan RLS Supabase untuk anon key.
@@ -921,11 +986,10 @@ Jangan memberi harga pasti atau menjamin keaslian; sarankan konsultasi ke ahli a
    "denomination": 100, "year": 1990, "note": "contoh"}
 ]
 ```
-`events_seed.json` (waktu UTC; semua berlabel contoh)
+`currencies_seed.json` **[0.5]** (events_seed dihapus)
 ```json
 [
-  {"title": "Bursa Numismatik (contoh)", "start_utc": "2026-10-24T19:00:00Z",
-   "location": "Lokasi contoh", "note": "Data contoh untuk demo"}
+  {"code": "IDR", "name": "Rupiah", "country": "Indonesia"}
 ]
 ```
 `spots_seed.json` (isi hanya tempat yang sudah kamu cek sendiri)

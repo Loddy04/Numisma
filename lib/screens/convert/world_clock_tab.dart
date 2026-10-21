@@ -1,6 +1,6 @@
 // screens/convert/world_clock_tab.dart
 // Tab "Jam Dunia" (NUMISMA_GUIDE Bagian 7.7b): satu jam yang berdetak tiap
-// detik, dan daftar acara kolektor CONTOH. Zona waktu jam dan zona tiap
+// detik, dan daftar acara kolektor milik akun yang login. Zona waktu jam dan zona tiap
 // kartu acara dipilih sendiri oleh pengguna (WIB, WITA, WIT, UTC), jadi
 // layar tidak penuh menampilkan semua zona sekaligus.
 
@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/time_util.dart';
 import '../../models/event.dart';
+import '../../services/auth_service.dart';
 import '../../services/event_repo.dart';
 import '../../theme.dart';
 
@@ -29,6 +30,7 @@ class _WorldClockTabState extends State<WorldClockTab> {
     _Zone('UTC', zoneUtc),
   ];
 
+  final _authService = AuthService();
   final _events = EventRepo();
   Timer? _ticker;
   DateTime _nowUtc = DateTime.now().toUtc();
@@ -62,7 +64,14 @@ class _WorldClockTabState extends State<WorldClockTab> {
 
   Future<void> _loadEvents() async {
     try {
-      final list = await _events.list();
+      // Acara milik akun yang sedang login; session adalah sumber kebenaran
+      // siapa penggunanya (sama seperti layar Koleksi).
+      final user = await _authService.currentUser();
+      if (user == null) {
+        if (mounted) setState(() => _loading = false);
+        return;
+      }
+      final list = await _events.list(user.id!);
       if (!mounted) return;
       setState(() {
         _list = list;
@@ -108,17 +117,12 @@ class _WorldClockTabState extends State<WorldClockTab> {
           _clockCard(),
           const SizedBox(height: 24),
           const Text(
-            'Acara kolektor (contoh)',
+            'Acara kolektor',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textDark,
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Data contoh untuk demo, bukan acara nyata.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 8),
           if (_loading)
