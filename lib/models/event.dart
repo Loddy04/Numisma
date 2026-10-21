@@ -10,6 +10,7 @@ class Event {
   // ditampilkan (time_util.dart), bukan saat disimpan.
   final DateTime startUtc;
   final String? location; // nama tempat (teks)
+  final String? note; // catatan pengguna, tampil di layar detail
 
   const Event({
     required this.id,
@@ -17,6 +18,7 @@ class Event {
     required this.title,
     required this.startUtc,
     this.location,
+    this.note,
   });
 
   factory Event.fromMap(Map<String, dynamic> map) {
@@ -27,6 +29,7 @@ class Event {
       // Selalu dijadikan UTC walau teksnya tanpa tanda "Z".
       startUtc: DateTime.parse(map['start_utc'] as String).toUtc(),
       location: map['location'] as String?,
+      note: map['note'] as String?,
     );
   }
 }

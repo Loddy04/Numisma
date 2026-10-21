@@ -9,7 +9,7 @@
 | Mata kuliah | Pemrograman Aplikasi Mobile |
 | Pengerjaan | Individu |
 | Penyusun | [Nama] / [NIM] |
-| Versi dokumen | 0.5 (21 Oktober 2026, Hari 3) — lanjutan 0.4, menambal: acara kolektor manual per akun (tanpa seed acara, `events` + `user_id`, DB v2), notifikasi dengan pilihan selisih dan alarm eksak (+ jadwal ulang saat aplikasi dibuka), kurs 44 mata uang + Nilai Koleksi, Jam Dunia satu jam + zona (WIB/WITA/WIT/UTC, London opsional); kolom `events.note` dan `reminders.notif_id` dihapus; LBS digabung dengan acara (satu peta dua lapisan) dengan migrasi v3 `events.lat/lng` direncanakan Hari 5. Bagian yang berubah ditandai **[0.5]** |
+| Versi dokumen | 0.5 (21 Oktober 2026, Hari 3) — lanjutan 0.4, menambal: acara kolektor manual per akun (tanpa seed acara, `events` + `user_id`, DB v2), notifikasi dengan pilihan selisih dan alarm eksak (+ jadwal ulang saat aplikasi dibuka), kurs 44 mata uang + Nilai Koleksi, Jam Dunia satu jam + zona (WIB/WITA/WIT/UTC, London opsional); kolom `reminders.notif_id` dihapus; layar detail acara (catatan via kolom `events.note`, migrasi v3), ubah, dan hapus (akses pengingat ada di detail); LBS digabung dengan acara (satu peta dua lapisan) dengan migrasi v4 `events.lat/lng` direncanakan Hari 5. Bagian yang berubah ditandai **[0.5]** |
 | Hari 1 | Senin, 19 Oktober 2026 |
 | Tenggat | Hari ke-7 = Minggu, 25 Oktober 2026 (konfirmasi ke dosen bila hitungan berbeda) |
 | Rencana | Hari 1-5 aplikasi, hari 6-7 laporan dan PPT |
@@ -259,7 +259,7 @@ numisma/
       scan/        scan_screen.dart
       chain/       chain_screen.dart              # Jejak Catatan
       convert/     convert_screen.dart  (3 tab: Kurs, Nilai Koleksi, Jam Dunia)   # [0.5]
-                   collection_value_tab.dart  world_clock_tab.dart  event_form_screen.dart
+                   collection_value_tab.dart  world_clock_tab.dart  event_form_screen.dart  event_detail_screen.dart
       explore/     explore_screen.dart
       profile/     profile_screen.dart
       feedback/    feedback_screen.dart
@@ -350,8 +350,9 @@ CREATE TABLE events (               -- [0.5] acara kolektor BUATAN PENGGUNA (tan
   user_id INTEGER NOT NULL REFERENCES users(id),
   title TEXT NOT NULL,
   start_utc TEXT NOT NULL,          -- ISO-8601 UTC
-  location TEXT                     -- nama tempat (teks); lat/lng menyusul di migrasi v3 (Hari 5, lihat 7.5)
-);                                  -- [0.5] kolom `note` DIHAPUS (tidak punya isian di form)
+  location TEXT,                    -- nama tempat (teks); lat/lng menyusul di migrasi v4 (Hari 5, lihat 7.5)
+  note TEXT                         -- [0.5] catatan acara; ditambahkan kembali di migrasi v3 (dilihat dan diubah di layar detail/ubah)
+);
 CREATE INDEX idx_events_user ON events(user_id);
 
 CREATE TABLE reminders (            -- [0.5] satu acara maksimal satu pengingat (dijaga kode)
@@ -395,7 +396,8 @@ Catatan desain:
 - `onUpgrade` 1→2: `DROP TABLE reminders`, `DROP TABLE events`, lalu buat ulang keduanya. Aman karena keduanya hanya berisi data seed atau kosong. Tabel lain tidak disentuh.
 - **`onCreate` wajib memakai skema v2 juga** (untuk HP yang bersih, mis. HP penguji). Uji kedua jalur: instal baru dan upgrade dari v1.
 - `events` dan `reminders` **tidak ikut sinkron Supabase** (tetap hanya `coins`, `chain_blocks`, `collector_spots`).
-- **[0.5] Migrasi v3 (direncanakan Hari 5, saat peta dibuat):** `ALTER TABLE events ADD COLUMN lat REAL` dan `ADD COLUMN lng REAL` (boleh NULL; acara lama tetap valid tanpa titik). Tidak ada tabel yang dibuat ulang, jadi data tidak hilang. `onCreate` pada saat itu juga wajib memakai skema v3.
+- **[0.5] Migrasi v3 (Hari 3, bersama layar detail acara):** `ALTER TABLE events ADD COLUMN note TEXT` (boleh NULL; acara lama tetap valid tanpa catatan). Tidak ada tabel yang dibuat ulang, jadi data tidak hilang. `onCreate` wajib memakai skema v3 juga.
+- **[0.5] Migrasi v4 (direncanakan Hari 5, saat peta dibuat):** `ALTER TABLE events ADD COLUMN lat REAL` dan `ADD COLUMN lng REAL` (boleh NULL; acara lama tetap valid tanpa titik). Data tidak hilang. `onCreate` pada saat itu juga wajib memakai skema v4.
 
 ### 5.2 Supabase (online)
 Jalankan di SQL Editor. Anon key harus bisa `select`, `insert`, `update` pada tabel ini. Atur RLS sesuai kebutuhan demo (nonaktif atau policy permisif) dan **catat sebagai keterbatasan keamanan**.
@@ -549,7 +551,7 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
   4. Bila tidak ada spot dalam 50 km, tampilkan yang terdekat beserta jaraknya.
   5. **Lokasi manual:** tekan lama pada peta untuk menetapkan posisi (untuk GPS lemah di dalam ruangan).
   6. Spot `verified=false` diberi label "belum diverifikasi".
-  7. **[0.5] Satu peta, dua lapisan:** selain marker spot kolektor, peta menampilkan **marker acara milik pengguna** yang punya titik lokasi (`events.lat`/`lng`, migrasi v3 di 5.1), dengan jarak dari posisi GPS pengguna dan urutan terdekat. Spot kolektor **tidak digantikan** acara: LBS adalah layanan berbasis **posisi pengguna** (GPS, jarak, terdekat), dan spot memberi isi yang bermakna saat demo; memilih titik saja bukan LBS.
+  7. **[0.5] Satu peta, dua lapisan:** selain marker spot kolektor, peta menampilkan **marker acara milik pengguna** yang punya titik lokasi (`events.lat`/`lng`, migrasi v4 di 5.1), dengan jarak dari posisi GPS pengguna dan urutan terdekat. Spot kolektor **tidak digantikan** acara: LBS adalah layanan berbasis **posisi pengguna** (GPS, jarak, terdekat), dan spot memberi isi yang bermakna saat demo; memilih titik saja bukan LBS.
   8. **[0.5] Pemilih lokasi di form acara** memakai komponen peta yang sama (tekan lama pada peta menetapkan titik, seperti lokasi manual di poin 5). Nama tempat tetap diketik manual karena geocoding (Nominatim) di luar lingkup (Bagian 1.5).
   9. **[0.5] Opsional, paling akhir bila Hari 5 ada sisa waktu:** tombol "Buka di Google Maps" lewat tautan koordinat (paket `url_launcher`, **tanpa** SDK Google Maps dan tanpa API key). Ini menambah di luar lingkup Bagian 1.5, jadi dicatat sebagai keputusan sengaja.
 - **Selesai bila:** T19.
@@ -572,14 +574,15 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
 **b. Jam Dunia dan Acara** [0.5, menggantikan versi lama]
 - **Satu jam** yang berdetak tiap detik (jam:menit:detik, tanggal, singkatan zona). Zona dipilih lewat pilihan: **WIB** (`Asia/Jakarta`), **WITA** (`Asia/Makassar`), **WIT** (`Asia/Jayapura`), **UTC** (`Etc/UTC`; nama `UTC` tidak ada di paket `timezone`), dan **London** (`Europe/London`, **opsional**: bukan wajib, dipertahankan karena membuktikan DST pada T11).
 - **UTC ≠ London.** London = UTC+0 (GMT) di musim dingin, tetapi UTC+1 (BST) di musim panas (sampai 25 Okt 2026). Jangan menyamakan keduanya.
-- **Kartu acara:** tiap kartu menampilkan **satu zona** (jam, tanggal, singkatan) dengan pilihan zona sendiri. Default WIB.
-- **Tambah acara manual** (`event_form_screen.dart`): judul (wajib), lokasi (opsional), tanggal (date picker), jam (time picker). **Jam input dibaca sebagai WIB** (label "Waktu dalam WIB"), lalu disimpan UTC bersama `user_id` akun yang login. Form **tidak punya pilihan zona input** (keputusan 0.5): jam selalu dibaca WIB, dan pengguna melihat waktu acara di zona lain lewat pilihan zona di tiap kartu.
-- **Hapus acara** dengan dialog konfirmasi; sekaligus membatalkan pengingatnya. **Edit acara ditunda** (hapus lalu buat ulang).
+- **Kartu acara (daftar):** tiap kartu menampilkan nama, lokasi, dan **satu zona** (jam, tanggal, singkatan) dengan pilihan zona sendiri. Default WIB. Bila acara punya pengingat, kartu menampilkan **info pengingat** (ikon lonceng + "N menit sebelum"); tanpa pengingat, bagian itu kosong. **Kartu tidak punya tombol hapus** (hapus ada di layar detail dan ubah, agar tidak terpencet tanpa sengaja). Mengetuk kartu membuka layar **detail**.
+- **Layar detail** (`event_detail_screen.dart`): nama, lokasi, waktu di **satu zona pilihan** (pilihan zona seperti kartu, bukan keempat zona sekaligus), **catatan**, bagian **pengingat** (tambah, ganti, batalkan; lihat 7.12), tombol **Ubah**, dan tombol **Hapus** (dengan dialog konfirmasi; sekaligus membatalkan pengingatnya).
+- **Tambah dan ubah acara** (`event_form_screen.dart`, satu form dipakai untuk dua mode): judul (wajib), lokasi (opsional), tanggal (date picker), jam (time picker), **catatan (opsional)**. **Jam input dibaca sebagai WIB** (label "Waktu dalam WIB"), lalu disimpan UTC bersama `user_id` akun yang login. Form **tidak punya pilihan zona input** (keputusan 0.5): jam selalu dibaca WIB, dan pengguna melihat waktu acara di zona lain lewat pilihan zona di kartu dan detail. Layar **Ubah juga punya tombol Hapus**.
+- **Mengubah tanggal atau jam acara membatalkan pengingatnya** (alarm dan baris `reminders`), dan pengguna diberi tahu agar memasang ulang pengingat sesuai waktu baru. Mengubah nama, lokasi, atau catatan tidak menyentuh pengingat.
 - Acara yang sudah lewat ditandai "Sudah lewat" dan tidak bisa diberi pengingat. Daftar kosong menampilkan teks "Belum ada acara. Tekan + untuk menambah."
 - **Uji DST London (T11)**, otomatis lewat `test/time_util_test.dart`: DST London berakhir Minggu 25 Okt 2026.
   - **20:00 London pada 24 Okt 2026** (BST, UTC+1) = **02:00 WIB 25 Okt 2026** (selisih 6 jam).
   - **20:00 London pada 26 Okt 2026** (GMT, UTC+0) = **03:00 WIB 27 Okt 2026** (selisih 7 jam).
-- **File:** `rates_service.dart`, `time_util.dart`, `format_util.dart`, `event_repo.dart`, `convert_screen.dart`, `collection_value_tab.dart`, `world_clock_tab.dart`, `event_form_screen.dart`.
+- **File:** `rates_service.dart`, `time_util.dart`, `format_util.dart`, `event_repo.dart`, `convert_screen.dart`, `collection_value_tab.dart`, `world_clock_tab.dart`, `event_form_screen.dart`, `event_detail_screen.dart`.
 
 ### 7.8 K8 — Dua sensor
 
@@ -650,17 +653,18 @@ Tidak perlu kolom baru: `photo_path`/`photo_source` tetap menandai **asal foto**
 - **File:** `coin_repo.dart`, `collection_screen.dart`.
 
 ### 7.12 K12 — Notifikasi [0.5, menggantikan versi lama]
+- **Akses pengingat ada di layar detail acara** (bukan di kartu daftar). Kartu daftar hanya **menampilkan** info pengingat bila ada (ikon lonceng + "N menit sebelum").
 - **Pengingat per acara:** tombol **"Ingatkan saya"** dengan pilihan cepat (5 menit, 15 menit, 30 menit, 1 jam, 1 hari) dan **"Atur sendiri"** (angka + menit/jam). Disimpan di `reminders`; satu acara maksimal satu pengingat (pasang baru = ganti baris lama).
 - **Cara hitung:** `waktu_pengingat = start_utc − selisih`. Pengguna memilih **selisih**, bukan jam alarm. Di "Atur sendiri": angka (minimal 1) + satuan (menit/jam/hari). Id notifikasi Android = `event_id` (tabel `reminders` tidak punya kolom `notif_id`).
 - **Alarm eksak** (`zonedSchedule` dengan mode eksak): jadwal diserahkan ke sistem Android, jadi **hampir tepat waktu dan tetap muncul walau aplikasi ditutup** (digeser dari recents). Syarat: pembatasan baterai HP dimatikan (Bagian 12) dan izin alarm eksak aktif.
   - **Izin alarm eksak:** bila belum aktif, aplikasi **mengarahkan pengguna ke pengaturannya**. Bila tetap ditolak, penjadwalan **turun ke mode tidak eksak** (bisa terlambat beberapa menit) dan memberi tahu pengguna, tidak gagal diam-diam.
   - Nama izin dan receiver persis (alarm eksak, `RECEIVE_BOOT_COMPLETED`, receiver boot plugin, desugaring) **belum diverifikasi**: cek README `flutter_local_notifications` versi terpasang (22.3.2) sebelum menulis kode.
-- **Keadaan pengingat di kartu** (diturunkan dari waktu; baris `reminders` tidak dihapus sendiri):
+- **Keadaan pengingat di layar detail** (diturunkan dari waktu; baris `reminders` tidak dihapus sendiri; kartu daftar hanya menampilkan ringkasannya):
   - `remind_at` di masa depan → "Pengingat: N menit sebelum" + tombol **Batalkan**.
   - `remind_at` sudah lewat, acara belum mulai → "Pengingat sudah lewat" + tombol **Ingatkan lagi**.
   - Acara sudah mulai → "Sudah lewat", tanpa tombol pengingat.
 - **Validasi:** pengingat harus di masa depan; bila tidak, pesan jelas (bukan error).
-- Baris `reminders` dihapus hanya saat **Batalkan**, **hapus acara**, atau **diganti** pengingat baru.
+- Baris `reminders` dihapus hanya saat **Batalkan**, **hapus acara**, **mengubah tanggal/jam acara**, atau **diganti** pengingat baru.
 - **Jadwalkan ulang saat aplikasi dibuka:** setelah `NotifService.init`, semua `reminders` dengan `remind_at` di masa depan dijadwalkan ulang (id sama, tanpa ganda). Perlu karena **force-stop membatalkan semua alarm**; pengingat yang jatuh tempo selama force-stop tidak bisa muncul (perilaku Android).
 - **Tombol uji tetap:** **"Kirim notifikasi uji sekarang"** dan **"Uji dalam 10 detik"** (memakai jalur penjadwalan yang sama, jadi membuktikan "jalan saat aplikasi ditutup").
 - Android 13+: minta `POST_NOTIFICATIONS` saat runtime.
@@ -740,7 +744,9 @@ Future<SyncResult> restore(User user);
 
 // event_repo.dart  [0.5 baru]
 Future<List<Event>> list(int userId);
-Future<Event> add({required int userId, required String title, required DateTime startUtc, String? location});
+Future<Event> add({required int userId, required String title, required DateTime startUtc, String? location, String? note});
+Future<Event?> getById(int eventId);
+Future<Event> update(Event event);                          // mengubah waktu = pengingat dibatalkan oleh pemanggil
 Future<void> delete(int eventId);
 
 // notif_service.dart  [0.5: parameter selisih]

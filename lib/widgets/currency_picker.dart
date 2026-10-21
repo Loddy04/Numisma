@@ -19,52 +19,51 @@ class CurrencyPickerField extends FormField<String> {
     bool required = false,
     ValueChanged<String?>? onChanged,
   }) : super(
-          initialValue: initialCode,
-          validator: (code) =>
-              (required && code == null) ? 'Mata uang wajib dipilih.' : null,
-          builder: (state) {
-            Future<void> open() async {
-              final result = await showModalBottomSheet<String>(
-                context: state.context,
-                isScrollControlled: true,
-                builder: (_) => _CurrencySheet(
-                  allowClear: !required && state.value != null,
-                ),
-              );
-              if (result == null) return; // sheet ditutup tanpa memilih
-              // String kosong = pengguna memilih "Kosongkan".
-              final code = result.isEmpty ? null : result;
-              state.didChange(code);
-              onChanged?.call(code);
-            }
+         initialValue: initialCode,
+         validator: (code) =>
+             (required && code == null) ? 'Mata uang wajib dipilih.' : null,
+         builder: (state) {
+           Future<void> open() async {
+             final result = await showModalBottomSheet<String>(
+               context: state.context,
+               isScrollControlled: true,
+               builder: (_) =>
+                   _CurrencySheet(allowClear: !required && state.value != null),
+             );
+             if (result == null) return; // sheet ditutup tanpa memilih
+             // String kosong = pengguna memilih "Kosongkan".
+             final code = result.isEmpty ? null : result;
+             state.didChange(code);
+             onChanged?.call(code);
+           }
 
-            return InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: open,
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: label,
-                  errorText: state.errorText,
-                  suffixIcon: const Icon(Icons.arrow_drop_down),
-                ),
-                // FutureBuilder: mengubah kode tersimpan ("IDR") menjadi
-                // nama yang enak dibaca ("Rupiah (IDR)"). Sebelum daftar
-                // termuat, atau untuk kode di luar daftar, tampil kodenya.
-                child: FutureBuilder<List<CurrencyOption>>(
-                  future: CurrencyService.load(),
-                  builder: (context, snap) {
-                    final code = state.value;
-                    if (code == null) return const Text(' ');
-                    final match = snap.data
-                        ?.where((c) => c.code == code)
-                        .firstOrNull;
-                    return Text(match?.label ?? code);
-                  },
-                ),
-              ),
-            );
-          },
-        );
+           return InkWell(
+             borderRadius: BorderRadius.circular(12),
+             onTap: open,
+             child: InputDecorator(
+               decoration: InputDecoration(
+                 labelText: label,
+                 errorText: state.errorText,
+                 suffixIcon: const Icon(Icons.arrow_drop_down),
+               ),
+               // FutureBuilder: mengubah kode tersimpan ("IDR") menjadi
+               // nama yang enak dibaca ("Rupiah (IDR)"). Sebelum daftar
+               // termuat, atau untuk kode di luar daftar, tampil kodenya.
+               child: FutureBuilder<List<CurrencyOption>>(
+                 future: CurrencyService.load(),
+                 builder: (context, snap) {
+                   final code = state.value;
+                   if (code == null) return const Text(' ');
+                   final match = snap.data
+                       ?.where((c) => c.code == code)
+                       .firstOrNull;
+                   return Text(match?.label ?? code);
+                 },
+               ),
+             ),
+           );
+         },
+       );
 }
 
 class _CurrencySheet extends StatefulWidget {

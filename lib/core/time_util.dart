@@ -28,6 +28,26 @@ DateTime toZone(DateTime utc, String zoneName) {
   return tz.TZDateTime.from(utc, tz.getLocation(zoneName));
 }
 
+// Kebalikan toZone: jam dinding di zona tertentu (mis. 20:00 WIB) menjadi
+// waktu UTC. Dipakai form acara, yang jam inputnya selalu dibaca WIB.
+DateTime utcFromZone(
+  String zoneName,
+  int year,
+  int month,
+  int day,
+  int hour,
+  int minute,
+) {
+  return tz.TZDateTime(
+    tz.getLocation(zoneName),
+    year,
+    month,
+    day,
+    hour,
+    minute,
+  ).toUtc();
+}
+
 // Singkatan zona saat itu: WIB, WITA, WIT, dan BST atau GMT untuk London.
 String zoneAbbreviation(DateTime utc, String zoneName) {
   return (toZone(utc, zoneName) as tz.TZDateTime).timeZoneName;

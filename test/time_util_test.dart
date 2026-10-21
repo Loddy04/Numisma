@@ -20,6 +20,17 @@ void main() {
     expect(formatZone(utc, zoneWib), '27 Okt 2026 03:00 WIB');
   });
 
+  test('utcFromZone: 02:00 WIB 25 Okt 2026 = 19:00 UTC 24 Okt 2026', () {
+    expect(
+      utcFromZone(zoneWib, 2026, 10, 25, 2, 0),
+      DateTime.utc(2026, 10, 24, 19),
+    );
+    expect(
+      utcFromZone(zoneWit, 2026, 10, 25, 4, 0),
+      DateTime.utc(2026, 10, 24, 19),
+    );
+  });
+
   test('UTC tampil sebagai UTC tanpa selisih', () {
     final utc = DateTime.utc(2026, 10, 24, 19);
     expect(formatZone(utc, zoneUtc), '24 Okt 2026 19:00 UTC');

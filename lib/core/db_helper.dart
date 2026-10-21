@@ -31,7 +31,7 @@ class DbHelper {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         // Wajib dinyalakan manual di sqflite, beda dari SQLite
         // command-line yang sudah default ON.
@@ -49,11 +49,18 @@ class DbHelper {
   // skemanya sama persis dengan instalasi baru. Tabel lain (users, coins,
   // dst.) TIDAK disentuh. reminders dibuang lebih dulu karena ia
   // merujuk ke events.
+  //
+  // v2 -> v3: acara mendapat catatan (events.note). Cukup ALTER TABLE,
+  // jadi acara yang sudah ada tidak hilang. Jalur v1 sudah membuat skema
+  // terbaru (termasuk note) lewat _createEventTables, jadi tidak perlu
+  // ALTER lagi.
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('DROP TABLE IF EXISTS reminders');
       await db.execute('DROP TABLE IF EXISTS events');
       await _createEventTables(db);
+    } else if (oldVersion < 3) {
+      await db.execute('ALTER TABLE events ADD COLUMN note TEXT');
     }
   }
 
@@ -66,7 +73,8 @@ class DbHelper {
         user_id INTEGER NOT NULL REFERENCES users(id),
         title TEXT NOT NULL,
         start_utc TEXT NOT NULL,
-        location TEXT
+        location TEXT,
+        note TEXT
       )
     ''');
     await db.execute('CREATE INDEX idx_events_user ON events(user_id)');
