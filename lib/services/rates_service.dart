@@ -18,6 +18,8 @@ import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
 
 import '../core/db_helper.dart';
+import '../models/coin.dart';
+import 'coin_repo.dart';
 
 class RateInfo {
   final double rate;
@@ -38,19 +40,45 @@ class RateUnavailable implements Exception {
   String toString() => message;
 }
 
+// Hasil menjumlahkan nominal beberapa koin ke satu mata uang.
+// Koin yang kursnya tidak tersedia TIDAK dianggap 0: ia dihitung di
+// `skipped` supaya layar bisa berkata jujur bahwa totalnya belum lengkap.
+class CollectionValue {
+  final double total;
+  final int counted;
+  final int skipped;
+  // Tanggal kurs TERLAMA yang dipakai (jujur: totalnya sesegar yang tertua).
+  final String? oldestRateDate;
+  final bool anyFromCache;
+
+  const CollectionValue({
+    required this.total,
+    required this.counted,
+    required this.skipped,
+    this.oldestRateDate,
+    this.anyFromCache = false,
+  });
+}
+
 class RatesService {
   static const _baseUrl = 'https://api.frankfurter.dev/v2';
   static const _ttl = Duration(hours: 6);
   static const _timeout = Duration(seconds: 15);
 
   // Kurs satu pasangan beserta tanggalnya.
-  Future<RateInfo> getRateInfo(String from, String to) async {
+  // `forceRefresh` dipakai tarik-untuk-menyegarkan: melewati cache segar
+  // dan langsung bertanya ke API. Bila API gagal, cache lama tetap dipakai.
+  Future<RateInfo> getRateInfo(
+    String from,
+    String to, {
+    bool forceRefresh = false,
+  }) async {
     if (from == to) return const RateInfo(1.0, null);
 
     final db = await DbHelper.instance.database;
     final cached = await _readCache(db, from, to);
 
-    if (cached != null && cached.fresh) return cached.info;
+    if (!forceRefresh && cached != null && cached.fresh) return cached.info;
 
     try {
       final info = await _fetchBest(from, to);
@@ -60,8 +88,11 @@ class RatesService {
       // Jaringan mati, timeout, atau API menolak: cache lama masih lebih
       // baik daripada tidak ada angka sama sekali.
       if (cached != null) {
-        return RateInfo(cached.info.rate, cached.info.rateDate,
-            fromCache: true);
+        return RateInfo(
+          cached.info.rate,
+          cached.info.rateDate,
+          fromCache: true,
+        );
       }
       throw const RateUnavailable(
         'Kurs belum bisa diambil. Periksa internet lalu coba lagi.',
@@ -82,6 +113,69 @@ class RatesService {
     } on RateUnavailable {
       return null;
     }
+  }
+
+  // Nilai nominal setara seluruh koleksi satu pengguna (kontrak Bagian 8).
+  Future<double> collectionValue(int userId, String targetCurrency) async {
+    final coins = await CoinRepo().list(userId);
+    return (await valueOfCoins(coins, targetCurrency)).total;
+  }
+
+  // Menjumlahkan `nominal x kurs` untuk daftar koin tertentu (seluruh
+  // koleksi, atau hanya yang dipilih di Koleksi). Nominal dijumlah per
+  // mata uang dulu, lalu dikali kurs SEKALI per mata uang: 30 koin JPY
+  // cukup satu kali minta kurs, bukan 30 kali.
+  Future<CollectionValue> valueOfCoins(
+    List<Coin> coins,
+    String target, {
+    bool forceRefresh = false,
+  }) async {
+    final sums = <String, double>{};
+    final counts = <String, int>{};
+    for (final c in coins) {
+      sums[c.currencyCode] = (sums[c.currencyCode] ?? 0) + c.denomination;
+      counts[c.currencyCode] = (counts[c.currencyCode] ?? 0) + 1;
+    }
+
+    final codes = sums.keys.toList();
+    final infos = await Future.wait(
+      codes.map((code) async {
+        try {
+          return await getRateInfo(code, target, forceRefresh: forceRefresh);
+        } on RateUnavailable {
+          return null;
+        }
+      }),
+    );
+
+    var total = 0.0;
+    var counted = 0;
+    var skipped = 0;
+    String? oldest;
+    var anyFromCache = false;
+    for (var i = 0; i < codes.length; i++) {
+      final info = infos[i];
+      final n = counts[codes[i]]!;
+      if (info == null) {
+        skipped += n;
+        continue;
+      }
+      total += sums[codes[i]]! * info.rate;
+      counted += n;
+      anyFromCache = anyFromCache || info.fromCache;
+      final date = info.rateDate;
+      // Tanggal ISO bisa dibandingkan sebagai teks.
+      if (date != null && (oldest == null || date.compareTo(oldest) < 0)) {
+        oldest = date;
+      }
+    }
+    return CollectionValue(
+      total: total,
+      counted: counted,
+      skipped: skipped,
+      oldestRateDate: oldest,
+      anyFromCache: anyFromCache,
+    );
   }
 
   // Frankfurter membulatkan kurs ke beberapa angka penting saja, jadi
@@ -119,7 +213,8 @@ class RatesService {
     if (rows.isEmpty) return null;
     final row = rows.first;
     final fetchedAt = DateTime.tryParse(row['fetched_at'] as String);
-    final fresh = fetchedAt != null &&
+    final fresh =
+        fetchedAt != null &&
         DateTime.now().toUtc().difference(fetchedAt) < _ttl;
     return _Cached(
       RateInfo((row['rate'] as num).toDouble(), row['rate_date'] as String?),
@@ -128,18 +223,18 @@ class RatesService {
   }
 
   Future<void> _writeCache(
-      Database db, String from, String to, RateInfo info) async {
-    await db.insert(
-      'rates_cache',
-      {
-        'base': from,
-        'target': to,
-        'rate': info.rate,
-        'rate_date': info.rateDate,
-        'fetched_at': DateTime.now().toUtc().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    Database db,
+    String from,
+    String to,
+    RateInfo info,
+  ) async {
+    await db.insert('rates_cache', {
+      'base': from,
+      'target': to,
+      'rate': info.rate,
+      'rate_date': info.rateDate,
+      'fetched_at': DateTime.now().toUtc().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 }
 

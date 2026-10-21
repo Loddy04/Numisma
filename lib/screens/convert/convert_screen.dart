@@ -1,6 +1,6 @@
 // screens/convert/convert_screen.dart
-// Menu Konversi (NUMISMA_GUIDE Bagian 7.7). Dua tab: Kurs (sekarang) dan
-// Jam Dunia (Hari 3 berikutnya, masih placeholder). Layar tidak memanggil
+// Menu Konversi (NUMISMA_GUIDE Bagian 7.7). Tiga tab: Kurs, Nilai Koleksi
+// (collection_value_tab.dart), dan Jam Dunia (masih placeholder). Layar tidak memanggil
 // HTTP/database langsung: semuanya lewat RatesService (aturan Bagian 4.1).
 
 import 'dart:async';
@@ -8,9 +8,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/format_util.dart';
 import '../../services/rates_service.dart';
 import '../../theme.dart';
 import '../../widgets/currency_picker.dart';
+import 'collection_value_tab.dart';
 
 class ConvertScreen extends StatelessWidget {
   const ConvertScreen({super.key});
@@ -18,7 +20,7 @@ class ConvertScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Konversi'),
@@ -26,12 +28,17 @@ class ConvertScreen extends StatelessWidget {
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
-            tabs: [Tab(text: 'Kurs'), Tab(text: 'Jam Dunia')],
+            tabs: [
+              Tab(text: 'Kurs'),
+              Tab(text: 'Nilai Koleksi'),
+              Tab(text: 'Jam Dunia'),
+            ],
           ),
         ),
         body: const TabBarView(
           children: [
             _KursTab(),
+            CollectionValueTab(),
             Center(child: Text('Jam Dunia — segera hadir')),
           ],
         ),
@@ -47,8 +54,7 @@ class _KursTab extends StatefulWidget {
   State<_KursTab> createState() => _KursTabState();
 }
 
-class _KursTabState extends State<_KursTab>
-    with AutomaticKeepAliveClientMixin {
+class _KursTabState extends State<_KursTab> with AutomaticKeepAliveClientMixin {
   final _service = RatesService();
   final _amountController = TextEditingController(text: '1');
   // Kunci ke pemilih supaya tombol tukar bisa mengubah nilainya dari luar.
@@ -97,7 +103,8 @@ class _KursTabState extends State<_KursTab>
     _debounce = Timer(const Duration(milliseconds: 400), _recalculate);
   }
 
-  Future<void> _recalculate() async {
+  // `force` = tarik-untuk-menyegarkan: kurs diambil ulang dari API.
+  Future<void> _recalculate({bool force = false}) async {
     final amount = _parseAmount();
     if (amount == null || amount < 0) {
       setState(() {
@@ -117,7 +124,7 @@ class _KursTabState extends State<_KursTab>
     });
 
     try {
-      final info = await _service.getRateInfo(_from, _to);
+      final info = await _service.getRateInfo(_from, _to, forceRefresh: force);
       if (!mounted || myRequest != _requestNo) return;
       setState(() {
         _info = info;
@@ -149,57 +156,62 @@ class _KursTabState extends State<_KursTab>
   @override
   Widget build(BuildContext context) {
     super.build(context); // wajib untuk AutomaticKeepAliveClientMixin
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        TextField(
-          controller: _amountController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-          ],
-          decoration: const InputDecoration(labelText: 'Jumlah'),
-          onChanged: (_) => _scheduleRecalculate(),
-        ),
-        const SizedBox(height: 12),
-        CurrencyPickerField(
-          key: _fromKey,
-          label: 'Dari',
-          initialCode: _from,
-          required: true,
-          onChanged: (code) {
-            if (code == null) return;
-            setState(() => _from = code);
-            _recalculate();
-          },
-        ),
-        Center(
-          child: TextButton.icon(
-            onPressed: _swap,
-            icon: const Icon(Icons.swap_vert),
-            label: const Text('Tukar'),
+    return RefreshIndicator(
+      onRefresh: () => _recalculate(force: true),
+      child: ListView(
+        // Selalu bisa ditarik, walau isinya muat di satu layar.
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+            ],
+            decoration: const InputDecoration(labelText: 'Jumlah'),
+            onChanged: (_) => _scheduleRecalculate(),
           ),
-        ),
-        CurrencyPickerField(
-          key: _toKey,
-          label: 'Ke',
-          initialCode: _to,
-          required: true,
-          onChanged: (code) {
-            if (code == null) return;
-            setState(() => _to = code);
-            _recalculate();
-          },
-        ),
-        const SizedBox(height: 20),
-        _buildResult(),
-        const SizedBox(height: 12),
-        const Text(
-          'Kurs referensi dari Frankfurter, bukan harga jual-beli. '
-          'Diperbarui pada hari kerja.',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-      ],
+          const SizedBox(height: 12),
+          CurrencyPickerField(
+            key: _fromKey,
+            label: 'Dari',
+            initialCode: _from,
+            required: true,
+            onChanged: (code) {
+              if (code == null) return;
+              setState(() => _from = code);
+              _recalculate();
+            },
+          ),
+          Center(
+            child: TextButton.icon(
+              onPressed: _swap,
+              icon: const Icon(Icons.swap_vert),
+              label: const Text('Tukar'),
+            ),
+          ),
+          CurrencyPickerField(
+            key: _toKey,
+            label: 'Ke',
+            initialCode: _to,
+            required: true,
+            onChanged: (code) {
+              if (code == null) return;
+              setState(() => _to = code);
+              _recalculate();
+            },
+          ),
+          const SizedBox(height: 20),
+          _buildResult(),
+          const SizedBox(height: 12),
+          const Text(
+            'Kurs referensi dari Frankfurter, bukan harga jual-beli. '
+            'Diperbarui pada hari kerja.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
     );
   }
 
@@ -255,7 +267,7 @@ class _KursTabState extends State<_KursTab>
               info.rateDate == null
                   ? 'Mata uang sama, tanpa kurs.'
                   : 'Tanggal kurs: ${formatRateDate(info.rateDate!)}'
-                      '${info.fromCache ? ' (dari cache, internet tidak terjangkau)' : ''}',
+                        '${info.fromCache ? ' (dari cache, internet tidak terjangkau)' : ''}',
               style: TextStyle(
                 fontSize: 12,
                 color: info.fromCache ? AppColors.danger : Colors.grey,
@@ -266,39 +278,4 @@ class _KursTabState extends State<_KursTab>
       ),
     );
   }
-}
-
-// Format angka gaya Indonesia: titik pemisah ribuan, koma desimal.
-// Jumlah desimal menyesuaikan besar angka supaya kurs kecil (0,008781)
-// tidak tampil "0,00".
-String formatNumber(double value) {
-  final abs = value.abs();
-  final decimals = abs >= 100 ? 2 : (abs >= 1 ? 4 : 6);
-  final fixed = value.toStringAsFixed(decimals);
-  final parts = fixed.split('.');
-  final negative = parts[0].startsWith('-');
-  final digits = negative ? parts[0].substring(1) : parts[0];
-
-  final grouped = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write('.');
-    grouped.write(digits[i]);
-  }
-  // Buang nol di belakang desimal ("113,8800" -> "113,88").
-  final fraction = parts.length > 1 ? parts[1].replaceFirst(RegExp(r'0+$'), '') : '';
-  return '${negative ? '-' : ''}$grouped${fraction.isEmpty ? '' : ',$fraction'}';
-}
-
-// "2026-10-20" -> "20 Okt 2026". Dibuat manual (tanpa paket intl) karena
-// formatnya sederhana dan hanya dipakai di sini.
-String formatRateDate(String isoDate) {
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
-  ];
-  final parts = isoDate.split('-');
-  if (parts.length != 3) return isoDate;
-  final month = int.tryParse(parts[1]);
-  if (month == null || month < 1 || month > 12) return isoDate;
-  return '${int.parse(parts[2])} ${months[month - 1]} ${parts[0]}';
 }

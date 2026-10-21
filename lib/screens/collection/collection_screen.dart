@@ -10,9 +10,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../core/format_util.dart';
 import '../../models/coin.dart';
 import '../../services/auth_service.dart';
 import '../../services/coin_repo.dart';
+import '../../services/rates_service.dart';
 import '../../theme.dart';
 import 'coin_detail_screen.dart';
 import 'coin_form_screen.dart';
@@ -46,6 +48,10 @@ class _CollectionScreenState extends State<CollectionScreen> {
   // ID koin yang sedang dipilih. Tidak kosong = mode multi-pilih aktif.
   final Set<String> _selected = {};
   bool get _selecting => _selected.isNotEmpty;
+
+  final _rates = RatesService();
+  String? _selectedValueText; // null = belum dihitung / tidak ada pilihan
+  int _valueNo = 0;
 
   @override
   void initState() {
@@ -88,6 +94,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
         final visible = coins.map((c) => c.id).toSet();
         _selected.removeWhere((id) => !visible.contains(id));
       });
+      _refreshSelectedValue();
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -148,14 +155,37 @@ class _CollectionScreenState extends State<CollectionScreen> {
     setState(() {
       if (!_selected.add(id)) _selected.remove(id);
     });
+    _refreshSelectedValue();
   }
 
-  void _clearSelection() => setState(_selected.clear);
+  void _clearSelection() {
+    setState(_selected.clear);
+    _refreshSelectedValue();
+  }
 
-  // Ruang untuk "total nilai nominal setara" dari koin terpilih
-  // (Bagian 7.11). Nilainya butuh kurs, jadi baru diisi di Hari 3
-  // lewat RatesService.convert; selama null, baris ini tidak tampil.
-  String? _selectedValueLabel() => null;
+  // "Total nilai nominal setara" koin terpilih dalam IDR (Bagian 7.11).
+  // Dihitung ulang setiap pilihan berubah; kurs sudah di-cache sehingga
+  // ketukan berikutnya hampir seketika. Nomor permintaan membuang hasil
+  // lama bila pengguna mengetuk cepat.
+  Future<void> _refreshSelectedValue() async {
+    final myNo = ++_valueNo;
+    if (_selected.isEmpty) {
+      if (_selectedValueText != null) {
+        setState(() => _selectedValueText = null);
+      }
+      return;
+    }
+    final chosen = _coins.where((c) => _selected.contains(c.id)).toList();
+    final result = await _rates.valueOfCoins(chosen, 'IDR');
+    if (!mounted || myNo != _valueNo) return;
+    final text = result.counted == 0
+        ? 'Nilai nominal setara: tidak tersedia'
+        : 'Nilai nominal setara: ${formatNumber(result.total)} IDR'
+              '${result.skipped > 0 ? ' (${result.skipped} koin tak dihitung)' : ''}';
+    setState(() => _selectedValueText = text);
+  }
+
+  String? _selectedValueLabel() => _selectedValueText;
 
   Future<void> _deleteSelected() async {
     final count = _selected.length;
@@ -301,50 +331,62 @@ class _CollectionScreenState extends State<CollectionScreen> {
       // Dua pesan berbeda: koleksi memang kosong, atau pencarian/filter
       // tidak menemukan apa pun.
       final searching = _query.trim().isNotEmpty || _filters.isFiltering;
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            searching
-                ? 'Tidak ada koin yang cocok.'
-                : 'Koleksi masih kosong.\nTekan tombol Tambah untuk mencatat koin pertamamu.',
-            textAlign: TextAlign.center,
-          ),
+      // ListView (bukan Center) supaya keadaan kosong pun bisa ditarik
+      // untuk menyegarkan.
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                searching
+                    ? 'Tidak ada koin yang cocok.'
+                    : 'Koleksi masih kosong.\nTekan tombol Tambah untuk mencatat koin pertamamu.',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
         ),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 4, bottom: 88),
-      itemCount: _coins.length,
-      itemBuilder: (context, i) {
-        final coin = _coins[i];
-        final selected = _selected.contains(coin.id);
-        final jenis = coin.type == 'banknote' ? 'Uang kertas' : 'Koin';
-        final detail = [
-          jenis,
-          if (coin.year != null) '${coin.year}',
-          if (coin.condition != null) coin.condition!,
-        ].join(' • ');
-        return Card(
-          color: selected ? AppColors.gold.withValues(alpha: 0.35) : null,
-          child: ListTile(
-            leading: _thumbnail(coin),
-            title: Text(
-              '${coin.denominationLabel} ${coin.currencyCode} — ${coin.country}',
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(top: 4, bottom: 88),
+        itemCount: _coins.length,
+        itemBuilder: (context, i) {
+          final coin = _coins[i];
+          final selected = _selected.contains(coin.id);
+          final jenis = coin.type == 'banknote' ? 'Uang kertas' : 'Koin';
+          final detail = [
+            jenis,
+            if (coin.year != null) '${coin.year}',
+            if (coin.condition != null) coin.condition!,
+          ].join(' • ');
+          return Card(
+            color: selected ? AppColors.gold.withValues(alpha: 0.35) : null,
+            child: ListTile(
+              leading: _thumbnail(coin),
+              title: Text(
+                '${coin.denominationLabel} ${coin.currencyCode} — ${coin.country}',
+              ),
+              subtitle: Text(detail),
+              trailing: _selecting
+                  ? Icon(
+                      selected ? Icons.check_circle : Icons.circle_outlined,
+                      color: AppColors.bronze,
+                    )
+                  : const Icon(Icons.chevron_right),
+              onTap: () => _onTap(coin),
+              // Tekan lama = masuk mode pilih dan langsung memilih koin ini.
+              onLongPress: () => _toggle(coin.id),
             ),
-            subtitle: Text(detail),
-            trailing: _selecting
-                ? Icon(
-                    selected ? Icons.check_circle : Icons.circle_outlined,
-                    color: AppColors.bronze,
-                  )
-                : const Icon(Icons.chevron_right),
-            onTap: () => _onTap(coin),
-            // Tekan lama = masuk mode pilih dan langsung memilih koin ini.
-            onLongPress: () => _toggle(coin.id),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
