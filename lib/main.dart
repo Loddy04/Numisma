@@ -15,6 +15,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'core/time_util.dart';
 import 'screens/auth/splash_screen.dart';
+import 'services/notif_service.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -24,6 +25,15 @@ Future<void> main() async {
 
   // Data zona waktu (WIB/WITA/WIT/London) untuk Jam Dunia dan Acara.
   initTimeZones();
+
+  // Siapkan notifikasi lalu jadwalkan ulang pengingat yang masih di masa
+  // depan (force-stop membatalkan alarm sistem). Gagal di sini tidak boleh
+  // menghalangi aplikasi terbuka.
+  try {
+    final notif = NotifService();
+    await notif.init();
+    await notif.rescheduleAll();
+  } catch (_) {}
 
   runApp(const NumismaApp());
 }

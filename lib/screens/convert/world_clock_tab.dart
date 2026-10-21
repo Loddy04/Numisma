@@ -13,6 +13,7 @@ import '../../core/time_util.dart';
 import '../../models/event.dart';
 import '../../services/auth_service.dart';
 import '../../services/event_repo.dart';
+import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/zone_picker.dart';
 import 'event_detail_screen.dart';
@@ -28,6 +29,7 @@ class WorldClockTab extends StatefulWidget {
 class _WorldClockTabState extends State<WorldClockTab> {
   final _authService = AuthService();
   final _events = EventRepo();
+  final _notif = NotifService();
   Timer? _ticker;
   DateTime _nowUtc = DateTime.now().toUtc();
 
@@ -140,7 +142,85 @@ class _WorldClockTabState extends State<WorldClockTab> {
             const Text('Belum ada acara.')
           else
             for (final e in _list) _eventCard(e),
+          const SizedBox(height: 16),
+          _testSection(),
         ],
+      ),
+    );
+  }
+
+  // --- Uji notifikasi (khusus demo, Bagian 7.12) -------------------------
+
+  void _snack(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _testNow() async {
+    try {
+      await _notif.showTestNow();
+    } on NotifException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (_) {
+      if (mounted) _snack('Gagal menampilkan notifikasi uji.');
+    }
+  }
+
+  // Memakai jalur penjadwalan yang sama dengan pengingat acara: tutup
+  // aplikasi setelah menekan tombol ini untuk membuktikan notifikasi tetap
+  // muncul walau aplikasi mati.
+  Future<void> _testIn10s() async {
+    try {
+      final exact = await _notif.showTestIn(const Duration(seconds: 10));
+      if (!mounted) return;
+      _snack(
+        exact
+            ? 'Notifikasi muncul dalam 10 detik. Coba tutup aplikasinya.'
+            : 'Notifikasi muncul dalam sekitar 10 detik, bisa terlambat '
+                  'karena izin alarm eksak belum aktif.',
+      );
+    } on NotifException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (_) {
+      if (mounted) _snack('Gagal menjadwalkan notifikasi uji.');
+    }
+  }
+
+  Widget _testSection() {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Uji notifikasi',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Untuk memastikan notifikasi berfungsi di HP ini.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _testNow,
+                  icon: const Icon(Icons.notifications_active),
+                  label: const Text('Kirim sekarang'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _testIn10s,
+                  icon: const Icon(Icons.timer),
+                  label: const Text('Uji dalam 10 detik'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
