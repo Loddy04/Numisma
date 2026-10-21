@@ -9,6 +9,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/format_util.dart';
 import '../../core/time_util.dart';
 import '../../models/event.dart';
 import '../../services/auth_service.dart';
@@ -40,6 +41,8 @@ class _WorldClockTabState extends State<WorldClockTab> {
 
   int? _userId;
   List<Event> _list = [];
+  // id acara -> waktu pengingat (UTC), untuk ringkasan di kartu.
+  Map<int, DateTime> _reminders = {};
   bool _loading = true;
 
   @override
@@ -71,10 +74,12 @@ class _WorldClockTabState extends State<WorldClockTab> {
         return;
       }
       final list = await _events.list(user.id!);
+      final reminders = await _notif.reminderMap();
       if (!mounted) return;
       setState(() {
         _userId = user.id;
         _list = list;
+        _reminders = reminders;
         // Lupakan pilihan zona acara yang sudah terhapus.
         _eventZone.removeWhere((id, _) => !list.any((e) => e.id == id));
         _loading = false;
@@ -258,6 +263,38 @@ class _WorldClockTabState extends State<WorldClockTab> {
     );
   }
 
+  // Ringkasan pengingat di kartu (aksinya ada di layar detail): ikon lonceng
+  // + "N menit sebelum" bila pengingat masih berlaku, atau "Pengingat sudah
+  // lewat". Acara yang sudah mulai atau tanpa pengingat: tidak ada apa-apa.
+  Widget _reminderInfo(Event e) {
+    final remindAt = _reminders[e.id];
+    if (remindAt == null || !e.startUtc.isAfter(_nowUtc)) {
+      return const SizedBox.shrink();
+    }
+    final active = remindAt.isAfter(_nowUtc);
+    final before = formatDuration(e.startUtc.difference(remindAt));
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Icon(
+            active ? Icons.notifications_active : Icons.notifications_off,
+            size: 16,
+            color: active ? AppColors.bronze : Colors.grey,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            active ? 'Pengingat: $before sebelum' : 'Pengingat sudah lewat',
+            style: TextStyle(
+              fontSize: 12,
+              color: active ? AppColors.bronze : Colors.grey,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _eventCard(Event e) {
     final zone = _eventZone[e.id] ?? zoneWib;
     final past = e.startUtc.isBefore(_nowUtc);
@@ -308,8 +345,7 @@ class _WorldClockTabState extends State<WorldClockTab> {
                   ),
                 ],
               ),
-              // Kelompok C: info pengingat (ikon lonceng + "N menit sebelum")
-              // ditampilkan di sini bila acara punya pengingat.
+              _reminderInfo(e),
               const SizedBox(height: 8),
               ZonePicker(
                 selected: zone,

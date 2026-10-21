@@ -10,6 +10,7 @@ import '../../core/format_util.dart';
 import '../../core/time_util.dart';
 import '../../models/event.dart';
 import '../../services/event_repo.dart';
+import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/confirm_dialog.dart';
 
@@ -31,6 +32,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
   final _locationController = TextEditingController();
   final _noteController = TextEditingController();
   final _repo = EventRepo();
+  final _notif = NotifService();
 
   DateTime? _date; // hanya tanggalnya (jam diabaikan)
   TimeOfDay? _time;
@@ -130,6 +132,10 @@ class _EventFormScreenState extends State<EventFormScreen> {
     try {
       if (_editing) {
         final old = widget.event!;
+        // Dicek SEBELUM update, karena update ikut menghapus baris
+        // pengingat bila waktunya berubah.
+        final hadReminder =
+            timeChanged && (await _notif.reminderMap()).containsKey(old.id);
         await _repo.update(
           Event(
             id: old.id,
@@ -140,9 +146,20 @@ class _EventFormScreenState extends State<EventFormScreen> {
             note: _noteController.text,
           ),
         );
-        // Kelompok C: bila timeChanged, batalkan alarm pengingat acara ini
-        // (NotifService.cancelEventReminder) dan beri tahu pengguna. Baris
-        // reminders-nya sudah dihapus oleh EventRepo.update.
+        // Waktu berubah = pengingat lama tidak berlaku: batalkan alarmnya
+        // (barisnya sudah dihapus oleh update) dan beri tahu pengguna agar
+        // memasang ulang.
+        if (timeChanged) await _notif.cancelEventReminder(old.id);
+        if (hadReminder && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Waktu acara berubah, pengingat dibatalkan. '
+                'Pasang ulang bila perlu.',
+              ),
+            ),
+          );
+        }
       } else {
         await _repo.add(
           userId: widget.userId,
@@ -174,8 +191,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
     setState(() => _saving = true);
     try {
-      // Kelompok C: batalkan alarm pengingat (NotifService) sebelum baris
-      // acaranya dihapus.
+      // Alarm dibatalkan dulu; baris acaranya (dan pengingatnya) dihapus
+      // sesudahnya.
+      await _notif.cancelEventReminder(event.id);
       await _repo.delete(event.id);
       if (!mounted) return;
       Navigator.of(context).pop(EventFormResult.deleted);

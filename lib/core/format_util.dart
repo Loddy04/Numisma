@@ -42,6 +42,19 @@ String formatNumber(double value) {
   return '${negative ? '-' : ''}$grouped${fraction.isEmpty ? '' : ',$fraction'}';
 }
 
+// Selisih waktu yang enak dibaca: "30 menit", "1 jam", "1 jam 30 menit",
+// "1 hari". Dipakai untuk "Pengingat: 30 menit sebelum acara".
+String formatDuration(Duration d) {
+  final minutes = d.inMinutes;
+  if (minutes <= 0) return '0 menit';
+  if (minutes % 1440 == 0) return '${minutes ~/ 1440} hari';
+  final hours = minutes ~/ 60;
+  final rest = minutes % 60;
+  if (hours == 0) return '$rest menit';
+  if (rest == 0) return '$hours jam';
+  return '$hours jam $rest menit';
+}
+
 // "2026-10-20" -> "20 Okt 2026". Dibuat manual (tanpa paket intl) karena
 // formatnya sederhana dan hanya dipakai di sini.
 String formatRateDate(String isoDate) {
