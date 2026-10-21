@@ -1,4 +1,4 @@
-﻿// screens/auth/splash_screen.dart
+// screens/auth/splash_screen.dart
 // Layar pertama yang dilihat pengguna. Tugasnya cuma satu: cek
 // apakah ada session yang masih valid, lalu pindah ke Home atau
 // Login. Tidak ada UI rumit di sini karena durasinya sangat singkat.
@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/app_logo.dart';
 import '../home/home_shell.dart';
 import 'login_screen.dart';
 
@@ -47,27 +48,23 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (user != null) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => HomeShell(username: user.username),
-        ),
+        MaterialPageRoute(builder: (_) => HomeShell(username: user.username)),
       );
     } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Logo sementara: ikon koin + nama aplikasi. Bisa diganti aset
-    // gambar asli nanti tanpa mengubah logika di atas.
     return const Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.monetization_on, size: 72),
+            AppLogo(size: 96),
             SizedBox(height: 12),
             Text('Numisma', style: TextStyle(fontSize: 24)),
             SizedBox(height: 24),

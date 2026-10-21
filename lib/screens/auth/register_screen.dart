@@ -62,9 +62,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Pesan dari auth_service (mis. errUsernameTaken) sudah ramah,
       // langsung tampilkan isinya tanpa dibungkus lagi.
       final message = e.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -129,9 +129,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ? Icons.visibility_outlined
                             : Icons.visibility_off_outlined,
                       ),
-                      onPressed: () => setState(
-                        () => _obscurePassword = !_obscurePassword,
-                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                   validator: (value) {

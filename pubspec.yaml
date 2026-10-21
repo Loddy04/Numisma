@@ -21,6 +21,7 @@ dependencies:
   local_auth: ^3.0.2
   path: ^1.9.1
   path_provider: ^2.1.6
+  sensors_plus: ^7.1.1
   shared_preferences: ^2.5.6
   sqflite: ^2.4.4+2
   timezone: ^0.11.2
@@ -30,9 +31,24 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
   assets:
     - .env
     - assets/seed/currencies_seed.json
+    - assets/logo/logo_numisma_1024.png
+
+# Ikon aplikasi (launcher). Dibuat ulang dengan:
+#   dart run flutter_launcher_icons
+# Latar ikon adaptif memakai warna perunggu tema; foreground sudah punya
+# ruang kosong di sekelilingnya, jadi inset tambahan dibuat 0.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/logo/logo_numisma_1024.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#8C6239"
+  adaptive_icon_foreground: "assets/logo/icon_foreground_1024.png"
+  adaptive_icon_foreground_inset: 0

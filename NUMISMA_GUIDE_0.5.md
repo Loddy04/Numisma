@@ -595,6 +595,7 @@ Numisma sesuai Bagian 1. Di laporan: tema dan landasan teori numismatik (definis
 
 **Catatan — scan juga berlaku untuk uang kertas:** perlu digarisbawahi, fitur Scan AI (7.9a) dan efek gyroscope tilt di atas **sama-sama berlaku untuk kedua jenis item** — koin maupun uang kertas — karena keduanya disimpan di tabel yang sama (`coins`, kolom `type IN ('coin','banknote')`) dan prompt Gemini (Lampiran B.1) sudah meminta AI menentukan `type` sendiri dari foto. Tidak ada jalur terpisah untuk uang kertas; satu alur scan dan satu alur tampilan detail berlaku untuk keduanya.
 
+- **[0.5] Efek tilt dan layar penuh:** `widgets/tilt_photo.dart` mengintegrasikan kecepatan putar gyroscope (rad/detik) menjadi sudut miring, yang "bocor" kembali ke tengah saat HP diam; foto bergeser maksimum beberapa piksel dan kartunya miring tipis. Di `coin_detail_screen.dart` efeknya halus (foto dipotong bingkai dan diperbesar 12%). **Mengetuk foto membuka `coin_photo_viewer.dart`**: foto layar penuh seperti foto profil WhatsApp (transisi Hero) di atas latar cokelat tua, dengan tilt lebih dinamis (foto utuh, geser dan miring lebih besar). **Tanpa zoom cubit** karena bertabrakan dengan gerakan tilt. HP tanpa gyroscope: foto diam, tidak crash.
 - Deteksi goyang: besar percepatan melewati ambang (mulai coba sekitar 15 m/s²) dengan jeda 1 detik. Sesuaikan lewat uji di HP.
 - Batalkan langganan stream sensor di `dispose`.
 - GPS dipakai untuk LBS (7.5) dan dihitung terpisah dari dua sensor ini.

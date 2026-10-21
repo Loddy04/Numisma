@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../theme.dart';
+import '../../widgets/app_logo.dart';
 import '../auth/login_screen.dart';
 import '../collection/collection_screen.dart';
 import '../convert/convert_screen.dart';
@@ -74,22 +75,22 @@ class _HomeShellState extends State<HomeShell> {
   // sampai fiturnya dibuat di hari-hari berikutnya.
   void _openFeature(String label) {
     if (label == 'Koleksi') {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const CollectionScreen()),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CollectionScreen()));
     } else if (label == 'Konversi') {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ConvertScreen()),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const ConvertScreen()));
     } else {
       _openPlaceholder(label);
     }
   }
 
   void _openPlaceholder(String title) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => _PlaceholderPage(title: title)),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => _PlaceholderPage(title: title)));
   }
 
   // Scan = aksi cepat, bukan tab. Nanti diganti membuka scan_screen.dart
@@ -283,7 +284,11 @@ class _HomeShellState extends State<HomeShell> {
                   child: const SizedBox(
                     width: scanSize,
                     height: scanSize,
-                    child: Icon(Icons.camera_alt, color: Colors.white, size: 30),
+                    child: Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 30,
+                    ),
                   ),
                 ),
               ),
@@ -297,7 +302,19 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_titles[_tab])),
+      // Di Beranda, judul AppBar disertai logo; tab lain tetap teks saja.
+      appBar: AppBar(
+        title: _tab == _tabBeranda
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AppLogo(size: 28),
+                  const SizedBox(width: 8),
+                  Text(_titles[_tab]),
+                ],
+              )
+            : Text(_titles[_tab]),
+      ),
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNav(),
     );

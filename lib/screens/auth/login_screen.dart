@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
+import '../../widgets/app_logo.dart';
 import 'register_screen.dart';
 import 'splash_screen.dart';
 
@@ -114,9 +115,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -135,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.monetization_on, size: 56),
+                  const Center(child: AppLogo(size: 80)),
                   const SizedBox(height: 8),
                   const Text(
                     'Masuk ke Numisma',

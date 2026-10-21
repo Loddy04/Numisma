@@ -3,8 +3,9 @@
 // memuat ulang lewat getById(), karena hanya getById yang mendekripsi
 // catatan. Dengan begitu data selalu segar setelah diubah di form.
 //
-// Efek sensor (goyang = flip, tilt) ditambahkan di Hari 3 (K8); layar
-// ini sengaja masih sederhana. Pop dengan nilai true bila koin dihapus.
+// Foto koin memakai efek tilt dari gyroscope (K8, widgets/tilt_photo.dart).
+// Sensor accelerometer (goyang) ada di Coin Flip, bukan di layar ini.
+// Pop dengan nilai true bila koin dihapus.
 
 import 'dart:io';
 
@@ -13,7 +14,9 @@ import 'package:flutter/material.dart';
 import '../../models/coin.dart';
 import '../../services/coin_repo.dart';
 import '../../theme.dart';
+import '../../widgets/tilt_photo.dart';
 import 'coin_form_screen.dart';
+import 'coin_photo_viewer.dart';
 
 class CoinDetailScreen extends StatefulWidget {
   final String coinId;
@@ -125,15 +128,37 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       ),
     );
     if (path == null) return placeholder;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Image.file(
-        File(path),
-        height: 220,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => placeholder,
-      ),
+    // Foto asli bergerak halus mengikuti gyroscope (miringkan HP). Diketuk
+    // = layar penuh dengan efek lebih dinamis. Tag Hero yang sama dipakai di
+    // layar penuh supaya foto membesar dari posisinya.
+    final heroTag = 'coin-photo-${coin.id}';
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  CoinPhotoViewer(photoPath: path, heroTag: heroTag),
+            ),
+          ),
+          child: TiltPhoto(
+            height: 220,
+            child: Hero(
+              tag: heroTag,
+              child: Image.file(
+                File(path),
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => placeholder,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Ketuk foto untuk layar penuh · miringkan HP untuk menggeser',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      ],
     );
   }
 
