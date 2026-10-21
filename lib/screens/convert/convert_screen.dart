@@ -1,6 +1,6 @@
 // screens/convert/convert_screen.dart
 // Menu Konversi (NUMISMA_GUIDE Bagian 7.7). Tiga tab: Kurs, Nilai Koleksi
-// (collection_value_tab.dart), dan Jam Dunia (masih placeholder). Layar tidak memanggil
+// (collection_value_tab.dart), dan Jam Dunia (world_clock_tab.dart). Layar tidak memanggil
 // HTTP/database langsung: semuanya lewat RatesService (aturan Bagian 4.1).
 
 import 'dart:async';
@@ -13,6 +13,7 @@ import '../../services/rates_service.dart';
 import '../../theme.dart';
 import '../../widgets/currency_picker.dart';
 import 'collection_value_tab.dart';
+import 'world_clock_tab.dart';
 
 class ConvertScreen extends StatelessWidget {
   const ConvertScreen({super.key});
@@ -36,11 +37,7 @@ class ConvertScreen extends StatelessWidget {
           ),
         ),
         body: const TabBarView(
-          children: [
-            _KursTab(),
-            CollectionValueTab(),
-            Center(child: Text('Jam Dunia — segera hadir')),
-          ],
+          children: [_KursTab(), CollectionValueTab(), WorldClockTab()],
         ),
       ),
     );

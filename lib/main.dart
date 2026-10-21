@@ -13,6 +13,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import 'core/time_util.dart';
 import 'screens/auth/splash_screen.dart';
 import 'theme.dart';
 
@@ -20,6 +21,9 @@ Future<void> main() async {
   // Muat .env lebih dulu. fileName harus sama dengan nama file di
   // root proyek dan di daftar assets pubspec.yaml.
   await dotenv.load(fileName: '.env');
+
+  // Data zona waktu (WIB/WITA/WIT/London) untuk Jam Dunia dan Acara.
+  initTimeZones();
 
   runApp(const NumismaApp());
 }

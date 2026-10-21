@@ -1,0 +1,12 @@
+[
+  {"title": "Bursa Numismatik (contoh)", "start_utc": "2026-10-24T19:00:00Z",
+   "location": "Lokasi contoh", "note": "Data contoh untuk demo"},
+  {"title": "Pameran Uang Kuno (contoh)", "start_utc": "2026-10-26T20:00:00Z",
+   "location": "Lokasi contoh", "note": "Data contoh untuk demo"},
+  {"title": "Temu Komunitas Kolektor (contoh)", "start_utc": "2026-10-28T03:00:00Z",
+   "location": "Lokasi contoh", "note": "Data contoh untuk demo"},
+  {"title": "Lelang Daring Koin Dunia (contoh)", "start_utc": "2026-10-31T06:00:00Z",
+   "location": "Daring (contoh)", "note": "Data contoh untuk demo"},
+  {"title": "Workshop Merawat Koin (contoh)", "start_utc": "2026-11-07T08:00:00Z",
+   "location": "Lokasi contoh", "note": "Data contoh untuk demo"}
+]

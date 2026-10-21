@@ -3,6 +3,22 @@
 // Nilai Koleksi, multi-pilih Koleksi). Dibuat manual tanpa paket intl
 // karena kebutuhannya sederhana.
 
+// Singkatan bulan bahasa Indonesia (indeks 0 = Januari).
+const monthNamesId = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'Mei',
+  'Jun',
+  'Jul',
+  'Agu',
+  'Sep',
+  'Okt',
+  'Nov',
+  'Des',
+];
+
 // Format angka gaya Indonesia: titik pemisah ribuan, koma desimal.
 // Jumlah desimal menyesuaikan besar angka supaya kurs kecil (0,008781)
 // tidak tampil "0,00".
@@ -20,17 +36,16 @@ String formatNumber(double value) {
     grouped.write(digits[i]);
   }
   // Buang nol di belakang desimal ("113,8800" -> "113,88").
-  final fraction = parts.length > 1 ? parts[1].replaceFirst(RegExp(r'0+$'), '') : '';
+  final fraction = parts.length > 1
+      ? parts[1].replaceFirst(RegExp(r'0+$'), '')
+      : '';
   return '${negative ? '-' : ''}$grouped${fraction.isEmpty ? '' : ',$fraction'}';
 }
 
 // "2026-10-20" -> "20 Okt 2026". Dibuat manual (tanpa paket intl) karena
 // formatnya sederhana dan hanya dipakai di sini.
 String formatRateDate(String isoDate) {
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
-  ];
+  final months = monthNamesId;
   final parts = isoDate.split('-');
   if (parts.length != 3) return isoDate;
   final month = int.tryParse(parts[1]);

@@ -53,10 +53,7 @@ class CryptoUtil {
       return enc.Key.fromBase64(existing);
     }
     final newKey = enc.Key.fromSecureRandom(32); // AES-256
-    await _secureStorage.write(
-      key: _aesKeyStorageKey,
-      value: newKey.base64,
-    );
+    await _secureStorage.write(key: _aesKeyStorageKey, value: newKey.base64);
     return newKey;
   }
 
