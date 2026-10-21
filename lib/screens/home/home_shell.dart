@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/app_logo.dart';
 import '../auth/login_screen.dart';
@@ -54,8 +55,20 @@ class _HomeShellState extends State<HomeShell> {
       final user = await _authService.currentUser();
       if (!mounted) return;
       setState(() => _photoPath = user?.photoPath);
+      if (user != null) _syncReminders(user.id!);
     } catch (_) {
       // Gagal memuat foto tidak fatal: ikon orang bawaan tetap tampil.
+    }
+  }
+
+  // Akun yang login sudah diketahui di sini: jadwalkan ulang pengingat AKUN
+  // INI (force-stop membatalkan alarm sistem) dan batalkan alarm milik akun
+  // lain. Alarm Android per perangkat, sedangkan acara per akun.
+  Future<void> _syncReminders(int userId) async {
+    try {
+      await NotifService().rescheduleAll(userId);
+    } catch (_) {
+      // Gagal menjadwalkan ulang tidak boleh mengganggu layar utama.
     }
   }
 

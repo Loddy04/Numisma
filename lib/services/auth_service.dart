@@ -16,6 +16,7 @@ import '../core/crypto_util.dart';
 import '../core/db_helper.dart';
 import '../core/session_store.dart';
 import '../models/user.dart';
+import 'notif_service.dart';
 
 class AuthService {
   // --- Pesan error dalam bahasa Indonesia, dibaca langsung oleh UI ---
@@ -100,8 +101,10 @@ class AuthService {
     if (rows.isEmpty) return null;
 
     final user = User.fromMap(rows.first);
-    final passwordMatches =
-        CryptoUtil.verifyPassword(password, user.passwordHash);
+    final passwordMatches = CryptoUtil.verifyPassword(
+      password,
+      user.passwordHash,
+    );
     if (!passwordMatches) return null;
 
     await SessionStore.createSession(user.id!);
@@ -109,6 +112,13 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    // Alarm pengingat milik akun ini dibatalkan lebih dulu: alarm Android
+    // per perangkat, sedangkan acara per akun. Gagal membatalkan tidak boleh
+    // menghalangi logout.
+    try {
+      final user = await currentUser();
+      if (user != null) await NotifService().cancelAllForUser(user.id!);
+    } catch (_) {}
     await SessionStore.clearSession();
   }
 

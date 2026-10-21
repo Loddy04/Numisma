@@ -207,21 +207,51 @@ class NotifService {
     };
   }
 
-  // Dipanggil setelah init() saat aplikasi dibuka. Force-stop membatalkan
-  // semua alarm sistem, tetapi tabel `reminders` tetap ada, jadi pengingat
-  // yang masih di masa depan dijadwalkan ulang (id sama, tidak ganda).
-  // Yang sudah lewat dibiarkan: tampil sebagai "Pengingat sudah lewat".
-  Future<void> rescheduleAll() async {
+  // Alarm Android bersifat per PERANGKAT, sedangkan acara per AKUN. Saat
+  // akun keluar, alarm miliknya dibatalkan supaya tidak berbunyi (dan
+  // membocorkan nama acara) di layar akun lain. Baris `reminders` sengaja
+  // dibiarkan, jadi pengingatnya dipulihkan oleh rescheduleAll() ketika
+  // akun itu login lagi.
+  Future<void> cancelAllForUser(int userId) async {
+    final db = await DbHelper.instance.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT r.event_id AS event_id
+      FROM reminders r JOIN events e ON e.id = r.event_id
+      WHERE e.user_id = ?
+      ''',
+      [userId],
+    );
+    for (final r in rows) {
+      await _plugin.cancel(id: r['event_id'] as int);
+    }
+  }
+
+  // Dipanggil setelah akun diketahui (HomeShell dibuka, baik setelah login
+  // maupun session lama). Force-stop membatalkan semua alarm sistem, tetapi
+  // tabel `reminders` tetap ada, jadi pengingat AKUN INI yang masih di masa
+  // depan dijadwalkan ulang (id sama, tidak ganda). Yang sudah lewat
+  // dibiarkan: tampil sebagai "Pengingat sudah lewat".
+  //
+  // Pengingat milik akun LAIN dibatalkan alarmnya di sini (barisnya tetap
+  // ada). Ini menutup kasus session akun lain habis tanpa logout, atau
+  // alarm yang dipulihkan sistem setelah HP restart.
+  Future<void> rescheduleAll(int userId) async {
     try {
       final db = await DbHelper.instance.database;
       final rows = await db.rawQuery('''
         SELECT r.event_id AS event_id, r.remind_at AS remind_at,
-               e.title AS title, e.start_utc AS start_utc
+               e.title AS title, e.start_utc AS start_utc,
+               e.user_id AS user_id
         FROM reminders r JOIN events e ON e.id = r.event_id
       ''');
       final now = DateTime.now().toUtc();
       final exact = await canScheduleExact();
       for (final r in rows) {
+        if (r['user_id'] != userId) {
+          await _plugin.cancel(id: r['event_id'] as int);
+          continue;
+        }
         final remindAt = DateTime.parse(r['remind_at'] as String).toUtc();
         if (!remindAt.isAfter(now)) continue;
         final start = DateTime.parse(r['start_utc'] as String).toUtc();

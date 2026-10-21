@@ -26,13 +26,11 @@ Future<void> main() async {
   // Data zona waktu (WIB/WITA/WIT/London) untuk Jam Dunia dan Acara.
   initTimeZones();
 
-  // Siapkan notifikasi lalu jadwalkan ulang pengingat yang masih di masa
-  // depan (force-stop membatalkan alarm sistem). Gagal di sini tidak boleh
-  // menghalangi aplikasi terbuka.
+  // Siapkan notifikasi. Penjadwalan ulang pengingat TIDAK dilakukan di sini
+  // karena akun yang login belum diketahui; HomeShell yang memanggilnya.
+  // Gagal di sini tidak boleh menghalangi aplikasi terbuka.
   try {
-    final notif = NotifService();
-    await notif.init();
-    await notif.rescheduleAll();
+    await NotifService().init();
   } catch (_) {}
 
   runApp(const NumismaApp());

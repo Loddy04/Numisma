@@ -162,14 +162,15 @@ Semua paket dipasang dengan `flutter pub add <nama>` (versi terbaru yang kompati
 | Format tanggal | `intl` | |
 | Izin runtime | `permission_handler` (opsional) | `geolocator` dan `image_picker` sudah meminta izinnya sendiri |
 | Potong foto | `crop_your_image` | Layar potong digambar di dalam Flutter sendiri (bukan membuka aktivitas Android terpisah seperti `image_cropper`), supaya proses aplikasi tidak berisiko dimatikan sistem saat kembali dari cropper (lihat Bagian 12) |
+| Ikon aplikasi **[0.5]** | `flutter_launcher_icons` (**dev dependency**, `flutter pub add --dev`) | Konfigurasi di akhir `pubspec.yaml`; dibuat ulang dengan `dart run flutter_launcher_icons`. Logo ada di `assets/logo/` dan hanya `logo_numisma_1024.png` yang didaftarkan sebagai aset aplikasi |
 
 **Pengaturan Android yang sering lupa:**
 - `AndroidManifest.xml`: izin `INTERNET`, `USE_BIOMETRIC`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `POST_NOTIFICATIONS`, `CAMERA`.
 - `MainActivity` memakai `FlutterFragmentActivity` (syarat `local_auth`).
 - `minSdk` sesuai persyaratan paket (umumnya 21-24); baca pesan error build.
-- `flutter_local_notifications` biasanya meminta *core library desugaring*; ikuti README paketnya.
+- `flutter_local_notifications` **wajib** *core library desugaring*. Tanpanya build gagal dengan pesan `requires core library desugaring to be enabled`, dan itu terjadi begitu paketnya masuk `pubspec.yaml` (bukan hanya saat fiturnya dipakai). **[0.5, terverifikasi, README 22.3.2]** Di `android/app/build.gradle.kts`: `isCoreLibraryDesugaringEnabled = true` di `compileOptions`, `multiDexEnabled = true` di `defaultConfig`, dan `dependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") }`. Setelah memasang plugin yang punya syarat konfigurasi Android, atur konfigurasinya lalu jalankan `flutter build apk --debug` sebelum commit.
 - Notifikasi Android 13+ perlu izin `POST_NOTIFICATIONS` saat runtime.
-- **[0.5]** Alarm eksak: Android 13+ umumnya tidak memberi izin alarm eksak otomatis; pengguna mungkin harus mengaktifkannya di Pengaturan ("Alarm & pengingat"). Nama izin, receiver boot, dan versi Android yang terkena **belum diverifikasi**; baca README `flutter_local_notifications` versi terpasang sebelum menulis kode (lihat 7.12 dan 13.2).
+- **[0.5, terverifikasi]** Alarm eksak dan notifikasi terjadwal, di `AndroidManifest.xml`: izin `RECEIVE_BOOT_COMPLETED` dan `SCHEDULE_EXACT_ALARM` (Android 14+ butuh pengguna mengaktifkannya di Pengaturan "Alarm & pengingat"; aplikasi meminta lewat `requestExactAlarmsPermission()`), serta di dalam `<application>` receiver `com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver` dan `ScheduledNotificationBootReceiver` (dengan intent-filter `BOOT_COMPLETED`, `MY_PACKAGE_REPLACED`, `QUICKBOOT_POWERON`).
 
 ### 3.1 Rahasia lewat `.env`
 
@@ -256,16 +257,20 @@ numisma/
       auth/        splash_screen.dart  login_screen.dart  register_screen.dart
       home/        home_shell.dart                # bottom nav custom 5 ikon + grid Beranda
       collection/  collection_screen.dart  coin_form_screen.dart  coin_detail_screen.dart
+                   coin_photo_viewer.dart                # [0.5] foto koin layar penuh dengan tilt
       scan/        scan_screen.dart
       chain/       chain_screen.dart              # Jejak Catatan
       convert/     convert_screen.dart  (3 tab: Kurs, Nilai Koleksi, Jam Dunia)   # [0.5]
                    collection_value_tab.dart  world_clock_tab.dart  event_form_screen.dart  event_detail_screen.dart
+                   reminder_picker.dart                  # [0.5] pilihan selisih pengingat
       explore/     explore_screen.dart
       profile/     profile_screen.dart
       feedback/    feedback_screen.dart
       chat/        chat_screen.dart
       game/        game_screen.dart
     widgets/  coin_face.dart  coin_card.dart
+              currency_picker.dart  app_logo.dart  zone_picker.dart  confirm_dialog.dart  tilt_photo.dart   # [0.5]
+  test/  time_util_test.dart  format_util_test.dart    # [0.5] uji otomatis zona waktu (T11) dan format durasi
 ```
 
 ### 4.3 Navigasi
@@ -659,14 +664,16 @@ Tidak perlu kolom baru: `photo_path`/`photo_source` tetap menandai **asal foto**
 - **Cara hitung:** `waktu_pengingat = start_utc − selisih`. Pengguna memilih **selisih**, bukan jam alarm. Di "Atur sendiri": angka (minimal 1) + satuan (menit/jam/hari). Id notifikasi Android = `event_id` (tabel `reminders` tidak punya kolom `notif_id`).
 - **Alarm eksak** (`zonedSchedule` dengan mode eksak): jadwal diserahkan ke sistem Android, jadi **hampir tepat waktu dan tetap muncul walau aplikasi ditutup** (digeser dari recents). Syarat: pembatasan baterai HP dimatikan (Bagian 12) dan izin alarm eksak aktif.
   - **Izin alarm eksak:** bila belum aktif, aplikasi **mengarahkan pengguna ke pengaturannya**. Bila tetap ditolak, penjadwalan **turun ke mode tidak eksak** (bisa terlambat beberapa menit) dan memberi tahu pengguna, tidak gagal diam-diam.
-  - Nama izin dan receiver persis (alarm eksak, `RECEIVE_BOOT_COMPLETED`, receiver boot plugin, desugaring) **belum diverifikasi**: cek README `flutter_local_notifications` versi terpasang (22.3.2) sebelum menulis kode.
+  - Nama izin dan receiver sudah **terverifikasi** dari README `flutter_local_notifications` 22.3.2 (lihat Bagian 3, pengaturan Android).
 - **Keadaan pengingat di layar detail** (diturunkan dari waktu; baris `reminders` tidak dihapus sendiri; kartu daftar hanya menampilkan ringkasannya):
   - `remind_at` di masa depan → "Pengingat: N menit sebelum" + tombol **Batalkan**.
   - `remind_at` sudah lewat, acara belum mulai → "Pengingat sudah lewat" + tombol **Ingatkan lagi**.
   - Acara sudah mulai → "Sudah lewat", tanpa tombol pengingat.
 - **Validasi:** pengingat harus di masa depan; bila tidak, pesan jelas (bukan error).
 - Baris `reminders` dihapus hanya saat **Batalkan**, **hapus acara**, **mengubah tanggal/jam acara**, atau **diganti** pengingat baru.
-- **Jadwalkan ulang saat aplikasi dibuka:** setelah `NotifService.init`, semua `reminders` dengan `remind_at` di masa depan dijadwalkan ulang (id sama, tanpa ganda). Perlu karena **force-stop membatalkan semua alarm**; pengingat yang jatuh tempo selama force-stop tidak bisa muncul (perilaku Android).
+- **Jadwalkan ulang saat aplikasi dibuka:** `rescheduleAll(userId)` dipanggil dari `HomeShell` (akun yang login baru diketahui di sana, bukan di `main()`), dan menjadwalkan ulang `reminders` **akun itu** dengan `remind_at` di masa depan (id sama, tanpa ganda). Perlu karena **force-stop membatalkan semua alarm**; pengingat yang jatuh tempo selama force-stop tidak bisa muncul (perilaku Android).
+- **[0.5] Alarm Android per perangkat, acara per akun:** `logout()` memanggil `cancelAllForUser(userId)` (alarm akun itu dibatalkan, baris `reminders` dibiarkan agar pulih saat login lagi), dan `rescheduleAll(userId)` juga **membatalkan alarm milik akun lain** (menutup kasus session habis tanpa logout atau alarm yang dipulihkan sistem setelah restart). Tanpa ini, alarm akun A tetap berbunyi dan menampilkan nama acaranya saat akun B login di HP yang sama.
+- **[0.5] Teks "Berbunyi …" di layar detail** memakai zona pratinjau yang sedang dipilih (keputusan: dibiarkan); waktu bunyi sebenarnya selalu momen mutlak.
 - **Tombol uji tetap:** **"Kirim notifikasi uji sekarang"** dan **"Uji dalam 10 detik"** (memakai jalur penjadwalan yang sama, jadi membuktikan "jalan saat aplikasi ditutup").
 - Android 13+: minta `POST_NOTIFICATIONS` saat runtime.
 - **Selesai bila:** T20, T24, T27, T28.
@@ -750,13 +757,17 @@ Future<Event?> getById(int eventId);
 Future<Event> update(Event event);                          // mengubah waktu = pengingat dibatalkan oleh pemanggil
 Future<void> delete(int eventId);
 
-// notif_service.dart  [0.5: parameter selisih]
-Future<void> init();
-Future<void> scheduleEventReminder(Event event, Duration before);
-Future<void> cancelEventReminder(int eventId);
-Future<void> rescheduleAll();                               // dipanggil setelah init
+// notif_service.dart  [0.5: parameter selisih, nilai kembali, per akun]
+Future<void> init();                                        // sekali di main(); izin TIDAK diminta di sini
+Future<bool> scheduleEventReminder(Event event, Duration before);  // true = dijadwalkan eksak; melempar NotifException bila waktu lewat/izin ditolak
+Future<void> cancelEventReminder(int eventId);              // batalkan alarm + hapus baris reminders
+Future<void> cancelAllForUser(int userId);                  // saat logout: batalkan alarm akun itu, baris dibiarkan
+Future<void> rescheduleAll(int userId);                     // dari HomeShell: jadwal ulang pengingat AKUN INI, batalkan alarm akun lain
+Future<Map<int, DateTime>> reminderMap();                   // id acara -> remind_at (UTC)
+Future<bool> canScheduleExact();
 Future<void> showTestNow();
-Future<void> showTestIn(Duration d);
+Future<bool> showTestIn(Duration d);                        // true = eksak
+// NotifException(message): kesalahan dengan pesan ramah, langsung ditampilkan UI.
 
 // rates_service.dart  [0.5 tambahan, parameter opsional]
 Future<RateInfo> getRateInfo(String from, String to, {bool forceRefresh = false});
@@ -768,6 +779,9 @@ String formatZone(DateTime utc, String zoneName);
 String formatZoneTime(DateTime utc, String zoneName);       // [0.5] "02:00"
 String formatZoneDate(DateTime utc, String zoneName);       // [0.5] "25 Okt 2026"
 String formatClock(DateTime utc, String zoneName);          // [0.5] "14:05:09"
+String zoneAbbreviation(DateTime utc, String zoneName);     // [0.5] WIB, WITA, WIT, UTC, BST/GMT
+DateTime utcFromZone(String zoneName, int y, int m, int d, int h, int min);  // [0.5] jam dinding di zona -> UTC
+// Konstanta zona: zoneWib, zoneWita, zoneWit, zoneUtc ('Etc/UTC'), zoneLondon. initTimeZones() dipanggil di main().
 ```
 
 ---
@@ -836,6 +850,7 @@ Format lembar evaluasi (kolom "Hasil aktual" dan "Status" diisi saat menguji di 
 | T26 | Acara | Tambah acara, ganti zona tampil, hapus acara | Waktu benar di tiap zona; hapus membatalkan pengingat | | |
 | T27 | Pengingat | Pasang pengingat, force-stop, buka aplikasi lagi | Pengingat di masa depan dijadwalkan ulang dan tetap berbunyi | | |
 | T28 | Pengingat | Pengingat dengan selisih lebih besar dari sisa waktu ke acara | Pesan jelas, tidak error | | |
+| T29 | Pengingat per akun | Akun A pasang pengingat (acara 10 menit lagi), logout, login akun B, tunggu; lalu login A lagi | Notifikasi A tidak muncul saat B login; pengingat A pulih saat A login lagi | | |
 | T29 | Migrasi DB | Instal bersih (onCreate) dan upgrade dari v1 | Skema `events` v2 benar di kedua jalur | | |
 
 ---
@@ -912,7 +927,7 @@ Judul dan identitas · Masalah dan tema · Fitur ringkas · Arsitektur · Tech s
 - Bentuk JSON `/v2/rate`; ke-44 mata uang seed didukung dan aktif; kurs dibulatkan kasar; nama zona `Etc/UTC` valid, `UTC` tidak; DST London lewat tes otomatis.
 
 ### 13.2 Belum diverifikasi (cek sebelum dipakai)
-- **[0.5]** Izin dan receiver Android untuk alarm eksak (plugin 22.3.2); perilaku notifikasi dan izin alarm eksak di vivo V2318 saat aplikasi ditutup.
+- **[0.5]** Izin dan receiver Android untuk alarm eksak (plugin 22.3.2) **sudah terverifikasi** dari README dan build berhasil; notifikasi uji tetap muncul saat aplikasi ditutup di vivo V2318 (dites pengguna). **Belum terbukti:** pengingat setelah **force-stop** lalu aplikasi dibuka lagi, setelah **restart HP** tanpa membuka aplikasi (T27), dan **dua akun** di HP yang sama (T29).
 - Batas laju Frankfurter v2 (bentuk JSON sudah terverifikasi, lihat 13.1b).
 - Penulisan field persis request Gemini REST dan pemakaian prompt sistem.
 - Nama method versi terbaru: `sensors_plus`, `local_auth`, `flutter_local_notifications`, `supabase_flutter`, `flutter_map`, `bcrypt`, `encrypt`, `flutter_dotenv`.
