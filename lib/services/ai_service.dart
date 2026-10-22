@@ -118,6 +118,13 @@ class CoinGuess {
   }
 }
 
+// Satu pesan percakapan Tanya Numisma.
+class ChatMsg {
+  final bool fromUser; // false = jawaban AI
+  final String text;
+  const ChatMsg(this.fromUser, this.text);
+}
+
 class AiService {
   static const _endpoint = 'https://api.openai.com/v1/chat/completions';
   static const _timeout = Duration(seconds: 30);
@@ -148,6 +155,78 @@ class AiService {
       'Untuk kunci selain year: jika tidak yakin, isi null dan confidence '
       '"low". Jangan mengarang. Turunkan confidence bila year hanya '
       'perkiraan.';
+
+  // Prompt sistem chatbot (NUMISMA_GUIDE Lampiran B.2). Baris terakhir
+  // ditambahkan: jawaban ditampilkan sebagai teks biasa, jadi tanda Markdown
+  // (**tebal**, # judul) hanya akan tampil sebagai simbol yang mengganggu.
+  static const _chatPrompt =
+      'Kamu adalah "Tanya Numisma", asisten untuk kolektor koin dan uang '
+      'kertas.\n'
+      'Jawab dalam bahasa Indonesia, singkat (maksimal 6 kalimat).\n'
+      'Hanya bahas numismatik: sejarah koin atau uang, perawatan, ciri umum '
+      'keaslian, istilah.\n'
+      'Untuk pertanyaan di luar topik, tolak dengan sopan dan arahkan '
+      'kembali.\n'
+      'Jangan memberi harga pasti atau menjamin keaslian; sarankan konsultasi '
+      'ke ahli atau pedagang bereputasi.\n'
+      'Tulis teks biasa tanpa format Markdown.';
+
+  // Hanya sekian pesan terakhir yang dikirim: percakapan panjang membuat
+  // biaya dan waktu tunggu membengkak (Guide 7.9b).
+  static const maxHistory = 10;
+
+  // Mengirim satu giliran percakapan. `history` = pesan sebelumnya (tanpa
+  // `userMessage`). Mode konteks koin: `coinContext` (teks data koin) ditaruh
+  // di prompt sistem supaya berlaku di SETIAP giliran, dan `coinPhoto`
+  // dilampirkan pada pesan pengguna pertama yang ikut terkirim, jadi AI
+  // melihat fotonya, bukan hanya percaya teks data. Chat tidak mengubah
+  // database; revisi data tetap lewat form oleh pengguna.
+  Future<String> chat(
+    List<ChatMsg> history,
+    String userMessage, {
+    String? coinContext,
+    Uint8List? coinPhoto,
+  }) async {
+    final recent = history.length > maxHistory
+        ? history.sublist(history.length - maxHistory)
+        : history;
+    final system = coinContext == null
+        ? _chatPrompt
+        : '$_chatPrompt\n\n$coinContext';
+
+    var photoAttached = false;
+    Object contentOf(ChatMsg m) {
+      if (m.fromUser && coinPhoto != null && !photoAttached) {
+        photoAttached = true;
+        return [
+          {'type': 'text', 'text': m.text},
+          {
+            'type': 'image_url',
+            'image_url': {
+              'url':
+                  'data:${_mimeOf(coinPhoto)};base64,'
+                  '${base64Encode(coinPhoto)}',
+            },
+          },
+        ];
+      }
+      return m.text;
+    }
+
+    final messages = <Map<String, dynamic>>[
+      {'role': 'system', 'content': system},
+      for (final m in [...recent, ChatMsg(true, userMessage)])
+        {'role': m.fromUser ? 'user' : 'assistant', 'content': contentOf(m)},
+    ];
+
+    final answer = await _send({
+      'model': Config.openaiModel,
+      'reasoning_effort': _reasoningEffort,
+      'max_completion_tokens': 700,
+      'messages': messages,
+    });
+    return answer.trim();
+  }
 
   // Mengirim satu foto dan mengembalikan tebakan AI. Foto sudah diperkecil
   // oleh image_picker (maxWidth 1024), jadi ukuran kirimnya kecil.

@@ -15,6 +15,7 @@ import '../../theme.dart';
 import '../../widgets/app_logo.dart';
 import '../auth/login_screen.dart';
 import '../chain/chain_screen.dart';
+import '../chat/chat_screen.dart';
 import '../collection/collection_screen.dart';
 import '../convert/convert_screen.dart';
 import '../feedback/feedback_screen.dart';
@@ -58,7 +59,9 @@ class _HomeShellState extends State<HomeShell> {
       final user = await _authService.currentUser();
       if (!mounted) return;
       setState(() => _photoPath = user?.photoPath);
-      if (user != null) _syncReminders(user.id!);
+      // Ditunggu supaya indikator tarik-untuk-menyegarkan baru hilang setelah
+      // jadwal pengingat selesai dimuat ulang.
+      if (user != null) await _syncReminders(user.id!);
     } catch (_) {
       // Gagal memuat foto tidak fatal: ikon orang bawaan tetap tampil.
     }
@@ -102,6 +105,10 @@ class _HomeShellState extends State<HomeShell> {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const ChainScreen()));
+    } else if (label == 'Tanya Numisma') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const ChatScreen()));
     } else if (label == 'Game') {
       Navigator.of(
         context,
@@ -173,8 +180,35 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
+  // Tarik ke bawah untuk menyegarkan (seperti di layar Konversi): foto profil
+  // dan jadwal pengingat dimuat ulang. Grid ikon sendiri tidak berubah.
+  // AlwaysScrollableScrollPhysics dibutuhkan karena isi grid pendek dan
+  // tidak bisa di-scroll, sehingga tanpa itu tarikan tidak terdeteksi.
   Widget _buildGrid() {
+    return Column(
+      children: [
+        // Sapaan di atas grid. Username sudah dikirim dari Splash (data
+        // akun yang login), jadi tidak perlu membaca database lagi.
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Text(
+            'Halo, ${widget.username}',
+            style: Theme.of(context).textTheme.titleLarge,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(onRefresh: _loadPhoto, child: _gridView()),
+        ),
+      ],
+    );
+  }
+
+  Widget _gridView() {
     return GridView.count(
+      physics: const AlwaysScrollableScrollPhysics(),
       crossAxisCount: 3,
       padding: const EdgeInsets.all(16),
       mainAxisSpacing: 16,

@@ -15,6 +15,7 @@ import '../../models/coin.dart';
 import '../../services/coin_repo.dart';
 import '../../theme.dart';
 import '../../widgets/tilt_photo.dart';
+import '../chat/chat_screen.dart';
 import 'coin_form_screen.dart';
 import 'coin_photo_viewer.dart';
 
@@ -64,6 +65,14 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       ),
     );
     _load();
+  }
+
+  // Membuka chatbot dengan konteks koin ini (Guide 7.9b). Chat tidak mengubah
+  // data; bila AI menyarankan koreksi, pengguna memakai tombol Ubah sendiri.
+  void _askAi(Coin coin) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ChatScreen(contextCoin: coin)));
   }
 
   Future<void> _delete() async {
@@ -192,6 +201,12 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
         _row('Ringkasan AI', coin.aiSummary),
         const SizedBox(height: 24),
         ElevatedButton.icon(
+          onPressed: () => _askAi(coin),
+          icon: const Icon(Icons.chat),
+          label: const Text('Tanya Numisma tentang koin ini'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
           onPressed: _edit,
           icon: const Icon(Icons.edit),
           label: const Text('Ubah'),
