@@ -14,6 +14,8 @@
 //   Bila belum aktif, jadwal turun ke mode tidak eksak (bisa terlambat
 //   beberapa menit), tidak gagal diam-diam.
 
+import 'dart:ui' show Color;
+
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -40,6 +42,8 @@ class NotifService {
   static const _testNowId = 2000000001;
   static const _testLaterId = 2000000002;
 
+  static const _smallIcon = 'ic_stat_numisma';
+
   static const _details = NotificationDetails(
     android: AndroidNotificationDetails(
       'numisma_events',
@@ -47,6 +51,12 @@ class NotifService {
       channelDescription: 'Pengingat acara kolektor',
       importance: Importance.high,
       priority: Priority.high,
+      // Ikon kecil di bilah status harus MONOKROM (Android membuang
+      // warnanya): koin putih dengan huruf N dilubangi, dibuat dari logo.
+      // Aksen perunggu mewarnai ikon kecil di panel notifikasi. Berkas ada di
+      // android/app/src/main/res/. Tanpa ikon besar: logo cukup sekali.
+      icon: _smallIcon,
+      color: Color(0xFF8C6239),
     ),
   );
 
@@ -62,7 +72,7 @@ class NotifService {
     if (_initialized) return;
     await _plugin.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings(_smallIcon),
       ),
     );
     _initialized = true;

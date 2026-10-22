@@ -20,7 +20,11 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.numisma"
+        // Identitas aplikasi di HP. Berbeda dari `namespace` di atas (nama
+        // paket kode Kotlin, sengaja tidak diubah). Diganti dari
+        // com.example.numisma karena vivo menyimpan cache ikon notifikasi per
+        // nama paket dan masih menampilkan ikon Flutter lama.
+        applicationId = "com.numisma.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
