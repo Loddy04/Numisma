@@ -13,6 +13,8 @@ class AppColors {
   static const bronze = Color(0xFF8C6239);
   static const gold = Color(0xFFC9A66B);
   static const background = Color(0xFFFAF6EE);
+  // Cokelat susu lembut untuk kartu dan ubin di Beranda.
+  static const latte = Color(0xFFEADBC8);
   static const surface = Color(0xFFFFFFFF);
   static const textDark = Color(0xFF2A2117);
   static const danger = Color(0xFFB3261E);
@@ -41,9 +43,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -63,8 +63,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 14,
+          horizontal: 16,
+        ),
       ),
       textTheme: const TextTheme(
         titleLarge: TextStyle(

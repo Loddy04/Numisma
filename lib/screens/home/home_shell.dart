@@ -10,6 +10,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/coin_repo.dart';
 import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/app_logo.dart';
@@ -48,6 +49,11 @@ class _HomeShellState extends State<HomeShell> {
   // memberi tahu lewat callback saat foto diganti.
   String? _photoPath;
 
+  // Ringkasan koleksi untuk kartu di Beranda.
+  int _coinCount = 0;
+  int _banknoteCount = 0;
+  bool _statsLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -62,9 +68,26 @@ class _HomeShellState extends State<HomeShell> {
       // Ditunggu supaya indikator tarik-untuk-menyegarkan baru hilang setelah
       // jadwal pengingat selesai dimuat ulang.
       if (user != null) await _syncReminders(user.id!);
+      await _loadStats();
     } catch (_) {
       // Gagal memuat foto tidak fatal: ikon orang bawaan tetap tampil.
     }
+  }
+
+  // Jumlah koin dan uang kertas milik akun ini. Gagal tidak fatal: kartu
+  // tetap tampil tanpa angka.
+  Future<void> _loadStats() async {
+    try {
+      final user = await _authService.currentUser();
+      if (user == null) return;
+      final coins = await CoinRepo().list(user.id!);
+      if (!mounted) return;
+      setState(() {
+        _coinCount = coins.where((c) => c.type == 'coin').length;
+        _banknoteCount = coins.length - _coinCount;
+        _statsLoaded = true;
+      });
+    } catch (_) {}
   }
 
   // Akun yang login sudah diketahui di sini: jadwalkan ulang pengingat AKUN
@@ -78,25 +101,27 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  // Item grid Beranda. Halaman aslinya dibuat di hari-hari berikutnya,
-  // untuk sekarang tiap item membuka halaman placeholder.
+  // Item grid Beranda. Sinkron sementara tetap di sini (masih placeholder);
+  // rencananya dipindah ke layar Koleksi saat dibuat di Hari 5 (Guide 7.4),
+  // lalu grid kembali enam item (3x2).
   static const _features = <_Feature>[
-    _Feature('Koleksi', Icons.collections_bookmark),
+    _Feature('Koleksi', Icons.collections_bookmark_outlined),
     _Feature('Konversi', Icons.currency_exchange),
-    _Feature('Jelajah', Icons.map),
+    _Feature('Jelajah', Icons.map_outlined),
     _Feature('Jejak Catatan', Icons.link),
-    _Feature('Tanya Numisma', Icons.chat),
-    _Feature('Game', Icons.sports_esports),
-    _Feature('Sinkron', Icons.cloud_sync),
+    _Feature('Tanya Numisma', Icons.chat_bubble_outline),
+    _Feature('Game', Icons.sports_esports_outlined),
+    _Feature('Sinkron', Icons.cloud_sync_outlined),
   ];
 
   // Ikon Koleksi sudah punya halaman asli; sisanya masih placeholder
   // sampai fiturnya dibuat di hari-hari berikutnya.
   void _openFeature(String label) {
     if (label == 'Koleksi') {
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const CollectionScreen()));
+      // Jumlah koleksi di kartu Beranda dimuat ulang setelah kembali.
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const CollectionScreen()))
+          .then((_) => _loadStats());
     } else if (label == 'Konversi') {
       Navigator.of(
         context,
@@ -131,6 +156,7 @@ class _HomeShellState extends State<HomeShell> {
       context,
     ).push<bool>(MaterialPageRoute(builder: (_) => const ScanScreen()));
     if (saved == true && mounted) {
+      _loadStats();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Koin disimpan ke Koleksi.')),
       );
@@ -180,57 +206,175 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  // Tarik ke bawah untuk menyegarkan (seperti di layar Konversi): foto profil
-  // dan jadwal pengingat dimuat ulang. Grid ikon sendiri tidak berubah.
-  // AlwaysScrollableScrollPhysics dibutuhkan karena isi grid pendek dan
-  // tidak bisa di-scroll, sehingga tanpa itu tarikan tidak terdeteksi.
+  // Beranda: header (sapaan di kiri, merek di kanan), kartu ringkasan
+  // koleksi, lalu enam fitur. Tarik ke bawah untuk menyegarkan (foto profil,
+  // pengingat, dan jumlah koleksi dimuat ulang). ListView memakai
+  // AlwaysScrollableScrollPhysics supaya tarikan terdeteksi walau isinya
+  // muat dalam satu layar.
   Widget _buildGrid() {
     return Column(
       children: [
-        // Sapaan di atas grid. Username sudah dikirim dari Splash (data
-        // akun yang login), jadi tidak perlu membaca database lagi.
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: Text(
-            'Halo, ${widget.username}',
-            style: Theme.of(context).textTheme.titleLarge,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
+        // Sapaan menyambung dari AppBar: satu bidang perunggu dengan sudut
+        // bawah membulat, jadi bagian atas layar tetap berwarna.
+        _greeting(),
         Expanded(
-          child: RefreshIndicator(onRefresh: _loadPhoto, child: _gridView()),
+          child: RefreshIndicator(
+            onRefresh: _loadPhoto,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              children: [
+                _collectionCard(),
+                const SizedBox(height: 28),
+                Text(
+                  'MENU',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.4,
+                    color: AppColors.textDark.withValues(alpha: 0.55),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _featureGrid(),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _gridView() {
+  // Garis tipis perunggu: pembatas kartu tanpa bayangan tebal.
+  ShapeBorder _cardShape(double radius) => RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(radius),
+    side: BorderSide(color: AppColors.bronze.withValues(alpha: 0.25)),
+  );
+
+  // Sapaan di bawah AppBar. Username dari Splash (data akun yang login),
+  // tanpa baca database. Username panjang boleh turun ke baris kedua.
+  Widget _greeting() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 22),
+      decoration: const BoxDecoration(
+        color: AppColors.bronze,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Halo,',
+            style: TextStyle(fontSize: 14, color: Colors.white70),
+          ),
+          Text(
+            widget.username,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 26,
+              height: 1.15,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Kartu ringkasan: hanya data nyata (jumlah koin dan uang kertas), diketuk
+  // untuk membuka Koleksi. Nilai uang sengaja tidak ditampilkan di sini karena
+  // butuh kurs dari internet dan memperlambat Beranda.
+  Widget _collectionCard() {
+    final total = _coinCount + _banknoteCount;
+    final detail = !_statsLoaded
+        ? ' '
+        : (total == 0
+              ? 'Belum ada koin. Ketuk untuk menambah.'
+              : '$_coinCount koin · $_banknoteCount uang kertas');
+    return Material(
+      color: AppColors.latte,
+      shape: _cardShape(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openFeature('Koleksi'),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Koleksimu',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textDark.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _statsLoaded ? '$total item' : '...',
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(detail, style: const TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.bronze),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Ubin fitur: ikon besar di tengah dengan label di bawahnya, di atas warna
+  // cokelat susu lembut. Tanpa bayangan dan tanpa efek kaca; pembatasnya
+  // garis tipis perunggu.
+  Widget _featureGrid() {
     return GridView.count(
-      physics: const AlwaysScrollableScrollPhysics(),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 3,
-      padding: const EdgeInsets.all(16),
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1,
       children: [
         for (final f in _features)
-          InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () => _openFeature(f.label),
-            child: Card(
-              margin: EdgeInsets.zero,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(f.icon, size: 36, color: AppColors.bronze),
-                  const SizedBox(height: 8),
-                  Text(
-                    f.label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
+          Material(
+            color: AppColors.latte,
+            shape: _cardShape(16),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => _openFeature(f.label),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(f.icon, size: 40, color: AppColors.bronze),
+                    const SizedBox(height: 10),
+                    Text(
+                      f.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -369,7 +513,8 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Di Beranda, judul AppBar disertai logo; tab lain tetap teks saja.
+      // AppBar perunggu tetap ada di semua tab. Di Beranda judulnya disertai
+      // logo; tab lain teks saja.
       appBar: AppBar(
         title: _tab == _tabBeranda
             ? Row(
