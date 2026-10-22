@@ -1,7 +1,7 @@
 // screens/convert/world_clock_tab.dart
 // Tab "Jam Dunia" (NUMISMA_GUIDE Bagian 7.7b): satu jam yang berdetak tiap
 // detik, dan daftar acara kolektor milik akun yang login. Zona waktu jam dan
-// zona tiap kartu acara dipilih sendiri oleh pengguna (WIB, WITA, WIT, UTC),
+// zona tiap kartu acara dipilih sendiri oleh pengguna (WIB, WITA, WIT, London),
 // jadi layar tidak penuh menampilkan semua zona sekaligus. Mengetuk kartu
 // membuka layar detail; hapus dan ubah ada di sana, bukan di kartu.
 

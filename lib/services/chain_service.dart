@@ -38,13 +38,6 @@ class ChainVerifyResult {
   bool get ok => blockProblems.isEmpty && coinProblems.isEmpty;
 }
 
-// Data yang diingat demo "Ubah data diam-diam" supaya bisa dikembalikan.
-class TamperInfo {
-  final String coinId;
-  final double originalDenomination;
-  const TamperInfo(this.coinId, this.originalDenomination);
-}
-
 class ChainService {
   // Syarat proof-of-work: hash blok harus diawali teks ini.
   static const powPrefix = '00';
@@ -433,45 +426,6 @@ class ChainService {
       blockProblems: problems,
       coinProblems: coinProblems,
       blockCount: blocks.length,
-    );
-  }
-
-  // ---------------------------------------------------------------
-  // BAGIAN 4: khusus demo
-  // ---------------------------------------------------------------
-
-  // "Ubah data diam-diam": menaikkan nominal koin pertama langsung di tabel
-  // `coins`, TANPA menambah blok, jadi verifikasi berikutnya gagal. Mengembalikan
-  // data asli supaya bisa dikembalikan; null bila belum ada koin.
-  Future<TamperInfo?> tamperSilently(int userId) async {
-    final db = await DbHelper.instance.database;
-    final rows = await db.query(
-      'coins',
-      where: 'user_id = ?',
-      whereArgs: [userId],
-      orderBy: 'created_at ASC',
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-
-    final id = rows.first['id'] as String;
-    final original = (rows.first['denomination'] as num).toDouble();
-    await db.update(
-      'coins',
-      {'denomination': original + 1},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    return TamperInfo(id, original);
-  }
-
-  Future<void> restoreTampered(TamperInfo info) async {
-    final db = await DbHelper.instance.database;
-    await db.update(
-      'coins',
-      {'denomination': info.originalDenomination},
-      where: 'id = ?',
-      whereArgs: [info.coinId],
     );
   }
 }

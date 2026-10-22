@@ -276,7 +276,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Waktu dalam WIB. Di daftar acara kamu bisa melihatnya di WITA, WIT, atau UTC.',
+              'Waktu dalam WIB. Di daftar acara kamu bisa melihatnya di WITA, WIT, atau London.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 16),

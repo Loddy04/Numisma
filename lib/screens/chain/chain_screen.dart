@@ -1,7 +1,7 @@
 // screens/chain/chain_screen.dart
 // Jejak Catatan (K13, NUMISMA_GUIDE 7.13): daftar blok hash chain milik akun,
-// tombol Verifikasi, dan tombol demo "Ubah data diam-diam". Layar tidak
-// menghitung hash sendiri: semuanya lewat ChainService (aturan Bagian 4.1).
+// dan tombol Verifikasi. Layar tidak menghitung hash sendiri: semuanya lewat
+// ChainService (aturan Bagian 4.1).
 
 import 'package:flutter/material.dart';
 
@@ -28,10 +28,8 @@ class _ChainScreenState extends State<ChainScreen> {
   List<ChainBlock> _blocks = [];
   // coin_id -> "Jepang 100", untuk menampilkan nama koin di tiap blok.
   Map<String, String> _coinLabels = {};
-  int _coinCount = 0;
 
   ChainVerifyResult? _result; // null = belum diverifikasi
-  TamperInfo? _tamper; // ada = data sedang diubah diam-diam oleh demo
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -62,7 +60,6 @@ class _ChainScreenState extends State<ChainScreen> {
       if (!mounted) return;
       setState(() {
         _blocks = blocks;
-        _coinCount = coins.length;
         _coinLabels = {
           for (final c in coins) c.id: '${c.country} ${c.denominationLabel}',
         };
@@ -88,47 +85,6 @@ class _ChainScreenState extends State<ChainScreen> {
       setState(() => _result = result);
     } catch (_) {
       _snack('Verifikasi gagal dijalankan. Coba lagi.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  // Demo: mengubah data koin langsung di tabel tanpa blok, lalu verifikasi
-  // otomatis dijalankan supaya hasilnya langsung terlihat.
-  Future<void> _tamperSilently() async {
-    final id = _userId;
-    if (id == null) return;
-    setState(() => _busy = true);
-    try {
-      final info = await _chain.tamperSilently(id);
-      if (info == null) {
-        _snack('Belum ada koin untuk diubah. Tambah koin dulu.');
-        return;
-      }
-      setState(() => _tamper = info);
-      await _verify();
-      _snack('Nominal satu koin diubah tanpa catatan. Lihat hasil verifikasi.');
-    } catch (_) {
-      _snack('Gagal menjalankan demo.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _restore() async {
-    final info = _tamper;
-    if (info == null) return;
-    setState(() => _busy = true);
-    try {
-      await _chain.restoreTampered(info);
-      setState(() {
-        _tamper = null;
-        _result = null;
-      });
-      await _verify();
-      _snack('Data asli dikembalikan.');
-    } catch (_) {
-      _snack('Gagal mengembalikan data.');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -209,28 +165,10 @@ class _ChainScreenState extends State<ChainScreen> {
   }
 
   Widget _actions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ElevatedButton.icon(
-          onPressed: _busy ? null : _verify,
-          icon: const Icon(Icons.verified_user),
-          label: const Text('Verifikasi'),
-        ),
-        const SizedBox(height: 8),
-        if (_tamper == null)
-          OutlinedButton.icon(
-            onPressed: _busy || _coinCount == 0 ? null : _tamperSilently,
-            icon: const Icon(Icons.warning_amber),
-            label: const Text('Ubah data diam-diam (demo)'),
-          )
-        else
-          OutlinedButton.icon(
-            onPressed: _busy ? null : _restore,
-            icon: const Icon(Icons.undo),
-            label: const Text('Kembalikan data asli'),
-          ),
-      ],
+    return ElevatedButton.icon(
+      onPressed: _busy ? null : _verify,
+      icon: const Icon(Icons.verified_user),
+      label: const Text('Verifikasi'),
     );
   }
 

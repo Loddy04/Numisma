@@ -1,7 +1,11 @@
 // widgets/zone_picker.dart
-// Deretan pilihan zona waktu (WIB, WITA, WIT, UTC), dipakai oleh jam utama,
+// Deretan pilihan zona waktu (WIB, WITA, WIT, London), dipakai oleh jam utama,
 // kartu acara, dan layar detail acara supaya semuanya berpilihan sama.
-// Menambah zona (mis. London) cukup menambah satu baris di `zoneOptions`.
+// Empat zona ini sesuai slide dosen. London = Europe/London (satu-satunya zona
+// London di database zona waktu; GMT di musim dingin, BST di musim panas).
+// UTC tidak lagi jadi pilihan di layar, tetapi `zoneUtc` tetap ada di
+// time_util.dart (dipakai tes). Menambah zona cukup menambah satu baris di
+// `zoneOptions`.
 
 import 'package:flutter/material.dart';
 
@@ -18,7 +22,7 @@ const zoneOptions = [
   ZoneOption('WIB', zoneWib),
   ZoneOption('WITA', zoneWita),
   ZoneOption('WIT', zoneWit),
-  ZoneOption('UTC', zoneUtc),
+  ZoneOption('London', zoneLondon),
 ];
 
 class ZonePicker extends StatelessWidget {
