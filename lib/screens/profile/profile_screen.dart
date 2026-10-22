@@ -1,6 +1,6 @@
 // screens/profile/profile_screen.dart
 // Isi tab Profil (K6, NUMISMA_GUIDE Bagian 7.6): foto pengguna dari
-// kamera atau galeri, username, dan email. Layar ini hanya isi tab,
+// kamera atau galeri, nama tampilan (bisa diganti), dan email. Layar ini hanya isi tab,
 // tanpa Scaffold sendiri, karena AppBar dan bottom nav milik HomeShell.
 //
 // Email tersimpan terenkripsi di database; di sini didekripsi hanya
@@ -22,7 +22,9 @@ class ProfileScreen extends StatefulWidget {
   // Dipanggil setelah foto berhasil diganti, supaya HomeShell bisa
   // memperbarui ikon Profil di bottom nav.
   final ValueChanged<String?>? onPhotoChanged;
-  const ProfileScreen({super.key, this.onPhotoChanged});
+  // Dipanggil setelah nama tampilan diganti, supaya sapaan di Beranda ikut.
+  final ValueChanged<String>? onNameChanged;
+  const ProfileScreen({super.key, this.onPhotoChanged, this.onNameChanged});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -162,6 +164,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // Dialog ganti nama tampilan (1-30 karakter, bebas). Disimpan di HP dan
+  // di Supabase; tanpa internet ditolak dengan pesan ramah.
+  Future<void> _editName() async {
+    final user = _user;
+    if (user == null) return;
+
+    final controller = TextEditingController(text: user.username);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Ganti nama tampilan'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: AuthService.maxNameLength,
+          decoration: const InputDecoration(labelText: 'Nama tampilan'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (newName == null || newName.trim() == user.username) return;
+
+    try {
+      final updated = await _authService.updateDisplayName(user, newName);
+      if (!mounted) return;
+      setState(() => _user = updated);
+      widget.onNameChanged?.call(updated.username);
+    } catch (e) {
+      if (!mounted) return;
+      // Pesan dari AuthService/AccountRemote sudah ramah.
+      _showMessage(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   // "2026-10-19T..." (UTC) -> "19/10/2026" dalam waktu lokal HP.
   String _formatDate(String iso) {
     final d = DateTime.parse(iso).toLocal();
@@ -248,7 +294,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        _infoTile(Icons.person, 'Username', user.username),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.person, color: AppColors.bronze),
+            title: const Text('Nama tampilan', style: TextStyle(fontSize: 12)),
+            subtitle: Text(
+              user.username,
+              style: const TextStyle(fontSize: 16),
+            ),
+            trailing: const Icon(Icons.edit, size: 20),
+            onTap: _editName,
+          ),
+        ),
         _infoTile(Icons.email, 'Email', _email),
         _infoTile(Icons.event, 'Bergabung', _formatDate(user.createdAt)),
         Card(

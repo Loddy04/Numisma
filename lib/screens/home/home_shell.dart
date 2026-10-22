@@ -49,6 +49,10 @@ class _HomeShellState extends State<HomeShell> {
   // memberi tahu lewat callback saat foto diganti.
   String? _photoPath;
 
+  // Nama tampilan untuk sapaan. Awalnya dari login, diperbarui bila pengguna
+  // menggantinya di Profil.
+  late String _username = widget.username;
+
   // Ringkasan koleksi untuk kartu di Beranda.
   int _coinCount = 0;
   int _banknoteCount = 0;
@@ -198,6 +202,7 @@ class _HomeShellState extends State<HomeShell> {
       case _tabProfil:
         return ProfileScreen(
           onPhotoChanged: (path) => setState(() => _photoPath = path),
+          onNameChanged: (name) => setState(() => _username = name),
         );
       case _tabSaran:
         return const FeedbackScreen();
@@ -269,7 +274,7 @@ class _HomeShellState extends State<HomeShell> {
             style: TextStyle(fontSize: 14, color: Colors.white70),
           ),
           Text(
-            widget.username,
+            _username,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(

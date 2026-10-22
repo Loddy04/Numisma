@@ -5,8 +5,9 @@
 
 class User {
   final int? id; // null sebelum disimpan (AUTOINCREMENT)
-  final String username;
+  final String username; // nama tampilan bebas, bukan untuk login
   final String emailEnc; // sudah terenkripsi AES, bukan email asli
+  final String emailHash; // SHA-256 email: pencarian, keunikan, kunci sinkron
   final String passwordHash; // bcrypt, bukan password asli
   final String? photoPath;
   final bool biometricEnabled;
@@ -16,6 +17,7 @@ class User {
     this.id,
     required this.username,
     required this.emailEnc,
+    required this.emailHash,
     required this.passwordHash,
     this.photoPath,
     this.biometricEnabled = false,
@@ -28,6 +30,7 @@ class User {
       'id': id,
       'username': username,
       'email_enc': emailEnc,
+      'email_hash': emailHash,
       'password_hash': passwordHash,
       'photo_path': photoPath,
       // SQLite tidak punya tipe boolean asli, jadi disimpan 0/1.
@@ -42,6 +45,7 @@ class User {
       id: map['id'] as int?,
       username: map['username'] as String,
       emailEnc: map['email_enc'] as String,
+      emailHash: map['email_hash'] as String,
       passwordHash: map['password_hash'] as String,
       photoPath: map['photo_path'] as String?,
       biometricEnabled: (map['biometric_enabled'] as int) == 1,
@@ -55,6 +59,7 @@ class User {
     int? id,
     String? username,
     String? emailEnc,
+    String? emailHash,
     String? passwordHash,
     String? photoPath,
     bool? biometricEnabled,
@@ -64,6 +69,7 @@ class User {
       id: id ?? this.id,
       username: username ?? this.username,
       emailEnc: emailEnc ?? this.emailEnc,
+      emailHash: emailHash ?? this.emailHash,
       passwordHash: passwordHash ?? this.passwordHash,
       photoPath: photoPath ?? this.photoPath,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,

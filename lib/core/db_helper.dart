@@ -31,7 +31,7 @@ class DbHelper {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onConfigure: (db) async {
         // Wajib dinyalakan manual di sqflite, beda dari SQLite
         // command-line yang sudah default ON.
@@ -42,30 +42,51 @@ class DbHelper {
     );
   }
 
-  // Migrasi versi database (NUMISMA_GUIDE 0.5, Bagian 5.1).
-  // v1 -> v2: acara kolektor menjadi buatan pengguna (events + user_id)
-  // dan reminders kehilangan kolom notif_id. Kedua tabel pada v1 hanya
-  // berisi data seed atau kosong, jadi dibuang lalu dibuat ulang agar
-  // skemanya sama persis dengan instalasi baru. Tabel lain (users, coins,
-  // dst.) TIDAK disentuh. reminders dibuang lebih dulu karena ia
-  // merujuk ke events.
-  //
-  // v2 -> v3: acara mendapat catatan (events.note). Cukup ALTER TABLE,
-  // jadi acara yang sudah ada tidak hilang. Jalur v1 sudah membuat skema
-  // terbaru (termasuk note) lewat _createEventTables, jadi tidak perlu
-  // ALTER lagi.
+  // Migrasi versi database (NUMISMA_GUIDE 0.7, Bagian 5.1).
+  // Hanya ada satu jalur ke v4, dari versi lama mana pun (v1, v2, atau v3):
+  // akun lama dibuang (keputusan pemilik proyek) karena login berpindah ke
+  // email dan kolom `email_hash` tidak bisa dihitung dari akun lama
+  // (email_enc dienkripsi dengan IV acak). Karena itu semua data milik
+  // pengguna ikut dikosongkan, supaya tidak ada baris yatim yang merujuk
+  // ke users yang sudah tidak ada.
+  // - coins, chain_blocks, game_scores, feedback: skemanya tidak berubah,
+  //   cukup dikosongkan.
+  // - reminders, events, users: skemanya berubah (events dapat lat/lng,
+  //   users dapat email_hash dan username tidak lagi unik), jadi dibuang
+  //   lalu dibuat ulang agar sama persis dengan instalasi baru.
+  // Urutannya mengikuti arah foreign key: anak dulu, baru induk.
+  // rates_cache tidak disentuh karena bukan data pengguna.
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
+    if (oldVersion < 4) {
       await db.execute('DROP TABLE IF EXISTS reminders');
       await db.execute('DROP TABLE IF EXISTS events');
+      await db.execute('DELETE FROM chain_blocks');
+      await db.execute('DELETE FROM coins');
+      await db.execute('DELETE FROM game_scores');
+      await db.execute('DELETE FROM feedback');
+      await db.execute('DROP TABLE IF EXISTS users');
+      await _createUsersTable(db);
       await _createEventTables(db);
-    } else if (oldVersion < 3) {
-      await db.execute('ALTER TABLE events ADD COLUMN note TEXT');
     }
   }
 
-  // Dipakai onCreate (HP bersih) dan onUpgrade (HP yang naik dari v1),
-  // supaya kedua jalur menghasilkan skema yang sama.
+  // Dipakai onCreate (HP bersih) dan onUpgrade, supaya kedua jalur
+  // menghasilkan skema yang sama.
+  Future<void> _createUsersTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        email_enc TEXT NOT NULL,
+        email_hash TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        photo_path TEXT,
+        biometric_enabled INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    ''');
+  }
+
   Future<void> _createEventTables(Database db) async {
     await db.execute('''
       CREATE TABLE events (
@@ -74,7 +95,9 @@ class DbHelper {
         title TEXT NOT NULL,
         start_utc TEXT NOT NULL,
         location TEXT,
-        note TEXT
+        note TEXT,
+        lat REAL,
+        lng REAL
       )
     ''');
     await db.execute('CREATE INDEX idx_events_user ON events(user_id)');
@@ -91,17 +114,7 @@ class DbHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        email_enc TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        photo_path TEXT,
-        biometric_enabled INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL
-      )
-    ''');
+    await _createUsersTable(db);
 
     await db.execute('''
       CREATE TABLE coins (
@@ -144,7 +157,7 @@ class DbHelper {
       )
     ''');
 
-    // events dan reminders (skema v2) dibuat di _createEventTables.
+    // events dan reminders (skema v4) dibuat di _createEventTables.
     await _createEventTables(db);
 
     await db.execute('''

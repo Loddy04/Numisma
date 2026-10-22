@@ -99,6 +99,17 @@ class CryptoUtil {
     return sha256.convert(bytes).toString();
   }
 
+  // "Sidik jari" email untuk mencari akun, menjaga keunikan, dan jadi kunci
+  // sinkron. Email dinormalkan dulu (huruf kecil, tanpa spasi di ujung)
+  // supaya "Budi@Mail.com " dan "budi@mail.com" dianggap sama. Awalan
+  // konstan "numisma:" membuat hasilnya berbeda dari tabel hash email umum.
+  // Ini HASH, bukan enkripsi: tidak bisa dibalik, tetapi email yang mudah
+  // ditebak tetap bisa dicocokkan (keterbatasan Guide 1.6). AES tidak bisa
+  // dipakai untuk ini karena ciphertext-nya berbeda tiap kali (IV acak).
+  static String emailHash(String email) {
+    return sha256OfString('numisma:${email.trim().toLowerCase()}');
+  }
+
   // ---------------------------------------------------------------
   // Helper umum
   // ---------------------------------------------------------------

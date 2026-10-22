@@ -1,10 +1,11 @@
 // screens/auth/login_screen.dart
-// Form login: username + password, plus tombol "Masuk dengan sidik
+// Form login: email + password, plus tombol "Masuk dengan sidik
 // jari" (Bagian 7.3) yang hanya muncul bila fitur itu sudah dinyalakan
 // di Profil dan HP-nya mendukung.
 
 import 'package:flutter/material.dart';
 
+import '../../services/account_remote.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../../widgets/app_logo.dart';
@@ -20,7 +21,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
   final _biometricService = BiometricService();
@@ -78,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -89,14 +90,14 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final user = await _authService.login(
-        _usernameController.text.trim(),
+        _emailController.text.trim(),
         _passwordController.text,
       );
 
       if (!mounted) return;
 
       if (user == null) {
-        // Pesan digabung (tidak membedakan "username salah" vs
+        // Pesan digabung (tidak membedakan "email salah" vs
         // "password salah") -- lihat alasannya di auth_service.dart.
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text(AuthService.errLoginFailed)),
@@ -117,7 +118,14 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(
+            // AccountException sudah berpesan ramah (mis. tanpa internet).
+            e is AccountException ? e.message : 'Terjadi kesalahan: $e',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -145,14 +153,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
                   TextFormField(
-                    controller: _usernameController,
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
-                      labelText: 'Username',
-                      prefixIcon: Icon(Icons.person_outline),
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Username tidak boleh kosong';
+                        return 'Email tidak boleh kosong';
                       }
                       return null;
                     },

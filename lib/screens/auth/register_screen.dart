@@ -1,9 +1,9 @@
 // screens/auth/register_screen.dart
-// Form registrasi: username, email, password, konfirmasi password.
-// Validasi format (panjang, pola) dilakukan di sini SEBELUM dikirim
-// ke auth_service, supaya pengguna dapat feedback instan tanpa
-// menunggu query database. Validasi keunikan username tetap dicek
-// ulang di auth_service (karena itu butuh akses database).
+// Form registrasi: nama tampilan, email, password, konfirmasi password.
+// Validasi format (panjang, pola, kekuatan password) dilakukan di sini
+// SEBELUM dikirim ke auth_service, supaya pengguna dapat feedback instan.
+// Aturannya diambil dari AuthService supaya hanya ada satu sumber.
+// Keunikan email dicek di auth_service (butuh database dan internet).
 
 import 'package:flutter/material.dart';
 
@@ -59,7 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
-      // Pesan dari auth_service (mis. errUsernameTaken) sudah ramah,
+      // Pesan dari auth_service (mis. errEmailTaken) sudah ramah,
       // langsung tampilkan isinya tanpa dibungkus lagi.
       final message = e.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(
@@ -84,18 +84,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 TextFormField(
                   controller: _usernameController,
+                  maxLength: AuthService.maxNameLength,
                   decoration: const InputDecoration(
-                    labelText: 'Username',
-                    helperText: '4-20 karakter: huruf, angka, garis bawah',
+                    labelText: 'Nama tampilan',
+                    helperText: 'Bebas, tampil di Beranda dan Profil',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
                   validator: (value) {
-                    final v = value?.trim() ?? '';
-                    if (v.isEmpty) return 'Username tidak boleh kosong';
-                    if (!RegExp(r'^[a-zA-Z0-9_]{4,20}$').hasMatch(v)) {
-                      return AuthService.errUsernameInvalid;
+                    if ((value?.trim() ?? '').isEmpty) {
+                      return 'Nama tampilan tidak boleh kosong';
                     }
-                    return null;
+                    return AuthService.displayNameProblem(value!);
                   },
                 ),
                 const SizedBox(height: 12),
@@ -104,12 +103,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     labelText: 'Email',
+                    helperText: 'Dipakai untuk masuk',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
                   validator: (value) {
                     final v = value?.trim() ?? '';
                     if (v.isEmpty) return 'Email tidak boleh kosong';
-                    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v)) {
+                    if (!AuthService.isValidEmail(v)) {
                       return AuthService.errEmailInvalid;
                     }
                     return null;
@@ -121,7 +121,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     labelText: 'Password',
-                    helperText: 'Minimal 8 karakter',
+                    helperText:
+                        '8-64 karakter: huruf besar, huruf kecil, angka, simbol',
+                    helperMaxLines: 2,
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -133,12 +135,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.length < 8) {
-                      return AuthService.errPasswordTooShort;
-                    }
-                    return null;
-                  },
+                  validator: (value) =>
+                      AuthService.passwordProblem(value ?? ''),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

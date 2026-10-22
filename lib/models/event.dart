@@ -11,6 +11,10 @@ class Event {
   final DateTime startUtc;
   final String? location; // nama tempat (teks)
   final String? note; // catatan pengguna, tampil di layar detail
+  // Titik lokasi di peta (opsional). Acara tanpa titik tetap valid, hanya
+  // tidak tampil di peta Jelajah.
+  final double? lat;
+  final double? lng;
 
   const Event({
     required this.id,
@@ -19,7 +23,11 @@ class Event {
     required this.startUtc,
     this.location,
     this.note,
+    this.lat,
+    this.lng,
   });
+
+  bool get hasPoint => lat != null && lng != null;
 
   factory Event.fromMap(Map<String, dynamic> map) {
     return Event(
@@ -30,6 +38,8 @@ class Event {
       startUtc: DateTime.parse(map['start_utc'] as String).toUtc(),
       location: map['location'] as String?,
       note: map['note'] as String?,
+      lat: (map['lat'] as num?)?.toDouble(),
+      lng: (map['lng'] as num?)?.toDouble(),
     );
   }
 }

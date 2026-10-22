@@ -12,7 +12,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/config.dart';
 import 'core/time_util.dart';
 import 'screens/auth/splash_screen.dart';
 import 'services/notif_service.dart';
@@ -25,6 +27,18 @@ Future<void> main() async {
 
   // Data zona waktu (WIB/WITA/WIT/London) untuk Jam Dunia dan Acara.
   initTimeZones();
+
+  // Supabase hanya dipakai sebagai database dan Storage (akun, sinkron,
+  // foto), TANPA Supabase Auth. Harus sesudah dotenv.load karena URL dan
+  // anon key dibaca dari .env. Gagal di sini (mis. .env belum diisi) tidak
+  // boleh menghalangi aplikasi terbuka: fitur online akan menampilkan
+  // pesan ramah saat dipakai, dan fitur offline tetap jalan.
+  try {
+    await Supabase.initialize(
+      url: Config.supabaseUrl,
+      anonKey: Config.supabaseAnonKey,
+    );
+  } catch (_) {}
 
   // Siapkan notifikasi. Penjadwalan ulang pengingat TIDAK dilakukan di sini
   // karena akun yang login belum diketahui; HomeShell yang memanggilnya.
