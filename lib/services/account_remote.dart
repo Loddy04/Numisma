@@ -48,7 +48,8 @@ class AccountRemote {
   static const errOffline =
       'Tidak bisa terhubung ke internet. Periksa koneksi lalu coba lagi.';
   static const errTimeout = 'Server terlalu lama menjawab. Coba lagi nanti.';
-  static const errGeneric = 'Layanan online sedang bermasalah. Coba lagi nanti.';
+  static const errGeneric =
+      'Layanan online sedang bermasalah. Coba lagi nanti.';
   static const errEmailTaken = 'Email sudah terdaftar. Silakan masuk.';
 
   SupabaseClient get _client => Supabase.instance.client;
@@ -62,12 +63,16 @@ class AccountRemote {
   // `onDuplicate`: pesan bila baris sudah ada (kode 23505, unique_violation).
   // Maknanya bergantung pada tabelnya, jadi pemanggil yang menentukan;
   // tanpa itu, 23505 dianggap kesalahan umum.
+  //
+  // `timeout`: batas waktu satu panggilan; unggah dan unduh foto memakai batas
+  // lebih longgar karena ukurannya jauh lebih besar dari data teks.
   static Future<T> guard<T>(
     Future<T> Function() call, {
     String? onDuplicate,
+    Duration timeout = _timeout,
   }) async {
     try {
-      return await call().timeout(_timeout);
+      return await call().timeout(timeout);
     } on AccountException {
       rethrow;
     } on TimeoutException {
@@ -131,9 +136,9 @@ class AccountRemote {
         passwordHash: row['password_hash'] as String,
         // Nilai timestamptz dari server dinormalkan ke UTC ISO-8601 sama
         // seperti kolom TEXT di SQLite.
-        createdAt: DateTime.parse(row['created_at'] as String)
-            .toUtc()
-            .toIso8601String(),
+        createdAt: DateTime.parse(
+          row['created_at'] as String,
+        ).toUtc().toIso8601String(),
       );
     });
   }
@@ -142,7 +147,8 @@ class AccountRemote {
     return guard(() async {
       await _client
           .from(_table)
-          .update({'username': username}).eq('email_hash', emailHash);
+          .update({'username': username})
+          .eq('email_hash', emailHash);
     });
   }
 }

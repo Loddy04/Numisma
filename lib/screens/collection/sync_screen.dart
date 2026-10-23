@@ -81,9 +81,18 @@ class _SyncScreenState extends State<SyncScreen> {
         'Terunggah: ${r.coinsUploaded} koin, ${r.blocksUploaded} blok catatan.',
       );
     }
+    if (r.photosUploaded > 0) {
+      parts.add('${r.photosUploaded} foto terunggah.');
+    }
     if (r.coinsRestored + r.blocksRestored > 0) {
       parts.add(
-        'Dipulihkan: ${r.coinsRestored} koin, ${r.blocksRestored} blok catatan.',
+        'Dipulihkan: ${r.coinsRestored} koin, ${r.blocksRestored} blok '
+        'catatan, ${r.photosRestored} foto.',
+      );
+    }
+    if (r.photosSkipped > 0) {
+      parts.add(
+        '${r.photosSkipped} foto tidak bisa dipulihkan (koinnya tetap masuk).',
       );
     }
     if (r.hasConflict) parts.add('Ada konflik rantai, tidak ada yang ditimpa.');

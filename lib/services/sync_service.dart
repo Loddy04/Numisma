@@ -17,11 +17,17 @@
 // AccountRemote.guard). Baris yang gagal terunggah tetap is_synced = 0 dan
 // dicoba lagi pada sinkron berikutnya.
 
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 // `User` milik Supabase Auth disembunyikan: yang dipakai di sini User model
 // kita (tanpa Supabase Auth).
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
+import '../core/crypto_util.dart';
 import '../core/db_helper.dart';
 import '../models/block.dart';
 import '../models/user.dart';
@@ -34,6 +40,11 @@ class SyncResult {
   final int blocksUploaded;
   final int coinsRestored;
   final int blocksRestored;
+  final int photosUploaded;
+  final int photosRestored;
+  // Foto yang tidak dipulihkan (gagal diunduh atau hash-nya tidak cocok);
+  // koinnya tetap masuk, hanya tanpa foto.
+  final int photosSkipped;
   // Blok yang idx-nya sama tetapi hash-nya beda antara HP dan online.
   final List<String> conflicts;
   // Keterangan non-fatal (mis. perangkat tidak kosong, jadi tidak dipulihkan).
@@ -44,6 +55,9 @@ class SyncResult {
     this.blocksUploaded = 0,
     this.coinsRestored = 0,
     this.blocksRestored = 0,
+    this.photosUploaded = 0,
+    this.photosRestored = 0,
+    this.photosSkipped = 0,
     this.conflicts = const [],
     this.note,
   });
@@ -55,6 +69,12 @@ class SyncService {
   static const _table = 'chain_blocks';
   static const _pageSize = 1000; // batas baris per permintaan Supabase
   static const _chunkSize = 100; // baris per permintaan tulis
+  // Foto koin di Supabase Storage, nama objek "{user_key}/{id_koin}.jpg".
+  static const _bucket = 'coin-photos';
+  static const _photoTimeout = Duration(seconds: 60);
+  // Tanda sekali jalan: koin yang sudah terunggah SEBELUM fitur foto ada perlu
+  // diunggah ulang supaya fotonya ikut.
+  static const _resyncPrefix = 'photo_resync_v1_';
 
   static const errBlockConflict =
       'Konflik rantai: ada blok online yang berbeda dari milik HP ini. '
@@ -134,6 +154,8 @@ class SyncService {
     final db = await DbHelper.instance.database;
     final key = user.emailHash;
 
+    await _ensurePhotoResync(user);
+
     final coinRows = await db.query(
       'coins',
       where: 'user_id = ? AND is_synced = 0',
@@ -150,16 +172,32 @@ class SyncService {
     // 1. Koin: upsert (koin yang diubah menimpa versi lamanya). Ditandai
     // terunggah hanya bila updated_at-nya masih sama dengan yang dikirim,
     // supaya koin yang diubah di tengah sinkron tidak salah ditandai.
+    //
+    // Foto diunggah lebih dulu supaya `has_photo` di baris koin akurat. Foto
+    // yang gagal terunggah TIDAK menghalangi sinkron teks: koinnya tetap
+    // diunggah, tetapi tidak ditandai tersinkron, jadi fotonya dicoba lagi
+    // pada sinkron berikutnya.
+    final photoFailed = <String>{};
+    var photosUp = 0;
     if (coinRows.isNotEmpty) {
-      for (final chunk in _chunks([
-        for (final r in coinRows) _coinPayload(r, key),
-      ])) {
+      final payloads = <Map<String, dynamic>>[];
+      for (final r in coinRows) {
+        final up = await _uploadPhoto(key, r);
+        if (up == null) {
+          photoFailed.add(r['id'] as String);
+        } else if (up) {
+          photosUp++;
+        }
+        payloads.add(_coinPayload(r, key, hasPhoto: up == true));
+      }
+      for (final chunk in _chunks(payloads)) {
         await AccountRemote.guard(
           () => _client.from('coins').upsert(chunk, onConflict: 'id'),
         );
       }
       final batch = db.batch();
       for (final r in coinRows) {
+        if (photoFailed.contains(r['id'])) continue;
         batch.update(
           'coins',
           {'is_synced': 1},
@@ -215,9 +253,9 @@ class SyncService {
       }
       await batch.commit(noResult: true);
 
-      // Koin yang sudah dihapus tidak perlu tinggal online. Gagal di sini
-      // tidak apa-apa: restore tetap melewati koin yang blok terakhirnya
-      // DELETE.
+      // Koin yang sudah dihapus tidak perlu tinggal online, begitu pula
+      // fotonya. Gagal di sini tidak apa-apa: restore tetap melewati koin
+      // yang blok terakhirnya DELETE.
       for (final b in toInsert) {
         if (b.action == 'DELETE' && b.coinId != null) {
           try {
@@ -229,15 +267,77 @@ class SyncService {
                   .eq('user_key', key),
             );
           } catch (_) {}
+          try {
+            await AccountRemote.guard(
+              () => _client.storage.from(_bucket).remove([
+                _photoObject(key, b.coinId!),
+              ]),
+            );
+          } catch (_) {}
         }
       }
     }
 
     return SyncResult(
-      coinsUploaded: coinRows.length,
+      coinsUploaded: coinRows.length - photoFailed.length,
       blocksUploaded: toInsert.length,
+      photosUploaded: photosUp,
       conflicts: conflicts,
     );
+  }
+
+  // Nama objek foto di Storage.
+  String _photoObject(String key, String coinId) => '$key/$coinId.jpg';
+
+  // Mengunggah foto satu koin. Hasil: true = foto terunggah, false = koin ini
+  // tidak punya foto (atau filenya sudah hilang), null = gagal (offline,
+  // timeout, atau ditolak server).
+  Future<bool?> _uploadPhoto(String key, Map<String, Object?> row) async {
+    final path = row['photo_path'] as String?;
+    if (path == null) return false;
+    final file = File(path);
+    if (!await file.exists()) return false;
+    try {
+      final bytes = await file.readAsBytes();
+      await AccountRemote.guard(
+        () => _client.storage
+            .from(_bucket)
+            .uploadBinary(
+              _photoObject(key, row['id'] as String),
+              bytes,
+              // upsert: foto yang diganti menimpa foto lama dengan nama sama.
+              fileOptions: const FileOptions(
+                upsert: true,
+                contentType: 'image/jpeg',
+              ),
+            ),
+        timeout: _photoTimeout,
+      );
+      return true;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Koin yang sudah terunggah sebelum fitur foto ada ditandai belum
+  // tersinkron SEKALI per akun (bila punya foto lokal), supaya fotonya ikut
+  // terunggah. Setelah itu tanda ini tidak dijalankan lagi.
+  Future<void> _ensurePhotoResync(User user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final flag = '$_resyncPrefix${user.id}';
+      if (prefs.getBool(flag) ?? false) return;
+      final db = await DbHelper.instance.database;
+      await db.update(
+        'coins',
+        {'is_synced': 0},
+        where: 'user_id = ? AND photo_path IS NOT NULL',
+        whereArgs: [user.id],
+      );
+      await prefs.setBool(flag, true);
+    } catch (_) {
+      // Gagal menandai tidak fatal; dicoba lagi pada sinkron berikutnya.
+    }
   }
 
   // ---------------------------------------------------------------
@@ -265,10 +365,9 @@ class SyncService {
     );
     final localCoinCount =
         Sqflite.firstIntValue(
-          await db.rawQuery(
-            'SELECT COUNT(*) FROM coins WHERE user_id = ?',
-            [user.id],
-          ),
+          await db.rawQuery('SELECT COUNT(*) FROM coins WHERE user_id = ?', [
+            user.id,
+          ]),
         ) ??
         0;
 
@@ -319,10 +418,69 @@ class SyncService {
       }
     });
 
+    // Foto dipulihkan SESUDAH data teks tersimpan, satu per satu. Tiap foto
+    // dicek dengan photo_hash di blok terakhir koin itu (SHA-256 byte foto);
+    // yang gagal diunduh atau hash-nya beda dilewati tanpa menggagalkan
+    // apa pun, karena data teks sudah aman di HP.
+    final expectedHash = <String, String?>{};
+    for (final b in remoteBlocks) {
+      if (b.coinId != null) expectedHash[b.coinId!] = b.photoHash;
+    }
+    var photosRestored = 0;
+    var photosSkipped = 0;
+    for (final c in toRestore) {
+      if (c['has_photo'] != true) continue;
+      final id = c['id'] as String;
+      final expected = expectedHash[id];
+      if (expected == null) continue; // blok tidak mencatat foto
+      if (await _restorePhoto(db, key, id, expected)) {
+        photosRestored++;
+      } else {
+        photosSkipped++;
+      }
+    }
+
     return SyncResult(
       coinsRestored: toRestore.length,
       blocksRestored: remoteBlocks.length,
+      photosRestored: photosRestored,
+      photosSkipped: photosSkipped,
     );
+  }
+
+  // Mengunduh satu foto, mencocokkannya dengan hash di Jejak Catatan, lalu
+  // menyimpannya ke folder aplikasi dan mencatat path-nya di baris koin.
+  // Mengembalikan false untuk kegagalan apa pun (tidak pernah melempar).
+  Future<bool> _restorePhoto(
+    Database db,
+    String key,
+    String coinId,
+    String expectedHash,
+  ) async {
+    try {
+      final bytes = await AccountRemote.guard(
+        () => _client.storage.from(_bucket).download(_photoObject(key, coinId)),
+        timeout: _photoTimeout,
+      );
+      if (CryptoUtil.sha256OfBytes(bytes) != expectedHash) return false;
+
+      final docs = await getApplicationDocumentsDirectory();
+      final dir = Directory(p.join(docs.path, 'coin_photos'));
+      if (!await dir.exists()) await dir.create(recursive: true);
+      final stamp = DateTime.now().millisecondsSinceEpoch;
+      final file = File(p.join(dir.path, '${coinId}_$stamp.jpg'));
+      await file.writeAsBytes(bytes);
+
+      await db.update(
+        'coins',
+        {'photo_path': file.path},
+        where: 'id = ?',
+        whereArgs: [coinId],
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ---------------------------------------------------------------
@@ -415,8 +573,12 @@ class SyncService {
       DateTime.parse(value).toUtc().toIso8601String();
 
   // Baris SQLite -> payload Supabase. photo_path tidak ikut (path hanya
-  // berarti di HP ini); has_photo menunggu fitur foto.
-  Map<String, dynamic> _coinPayload(Map<String, Object?> r, String key) => {
+  // berarti di HP ini); has_photo menandai ada foto di Storage.
+  Map<String, dynamic> _coinPayload(
+    Map<String, Object?> r,
+    String key, {
+    required bool hasPhoto,
+  }) => {
     'id': r['id'],
     'user_key': key,
     'type': r['type'],
@@ -429,7 +591,7 @@ class SyncService {
     'buy_currency': r['buy_currency'],
     'notes_enc': r['notes_enc'],
     'ai_summary': r['ai_summary'],
-    'has_photo': false,
+    'has_photo': hasPhoto,
     'created_at': r['created_at'],
     'updated_at': r['updated_at'],
   };
@@ -451,22 +613,23 @@ class SyncService {
 
   // Baris Supabase -> baris SQLite. is_synced = 1 karena data ini memang
   // berasal dari online; photo_path kosong sampai foto dipulihkan.
-  Map<String, dynamic> _coinRowFromRemote(Map<String, dynamic> c, int userId) => {
-    'id': c['id'],
-    'user_id': userId,
-    'type': c['type'],
-    'country': c['country'],
-    'currency_code': c['currency_code'],
-    'denomination': (c['denomination'] as num).toDouble(),
-    'year': c['year'],
-    'condition': c['condition'],
-    'buy_price': (c['buy_price'] as num?)?.toDouble(),
-    'buy_currency': c['buy_currency'],
-    'notes_enc': c['notes_enc'],
-    'photo_path': null,
-    'ai_summary': c['ai_summary'],
-    'created_at': _isoUtc(c['created_at'] as String),
-    'updated_at': _isoUtc(c['updated_at'] as String),
-    'is_synced': 1,
-  };
+  Map<String, dynamic> _coinRowFromRemote(Map<String, dynamic> c, int userId) =>
+      {
+        'id': c['id'],
+        'user_id': userId,
+        'type': c['type'],
+        'country': c['country'],
+        'currency_code': c['currency_code'],
+        'denomination': (c['denomination'] as num).toDouble(),
+        'year': c['year'],
+        'condition': c['condition'],
+        'buy_price': (c['buy_price'] as num?)?.toDouble(),
+        'buy_currency': c['buy_currency'],
+        'notes_enc': c['notes_enc'],
+        'photo_path': null,
+        'ai_summary': c['ai_summary'],
+        'created_at': _isoUtc(c['created_at'] as String),
+        'updated_at': _isoUtc(c['updated_at'] as String),
+        'is_synced': 1,
+      };
 }
