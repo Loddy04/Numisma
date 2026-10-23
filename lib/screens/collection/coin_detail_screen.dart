@@ -197,7 +197,13 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
         _row('Tahun', coin.year?.toString()),
         _row('Kondisi', coin.condition),
         _row('Harga beli', harga),
-        _row('Catatan', coin.notes),
+        _row(
+          'Catatan',
+          coin.notesUnreadable
+              ? 'Catatan tidak bisa dibuka di perangkat ini '
+                    '(kunci enkripsi berbeda).'
+              : coin.notes,
+        ),
         _row('Ringkasan AI', coin.aiSummary),
         const SizedBox(height: 24),
         ElevatedButton.icon(

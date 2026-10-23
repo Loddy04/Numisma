@@ -21,6 +21,9 @@ class Coin {
   final double? buyPrice;
   final String? buyCurrency;
   final String? notes; // teks asli; di DB tersimpan terenkripsi
+  // true = ada catatan terenkripsi tetapi gagal dibuka (mis. setelah Pulihkan
+  // di HP lain: kunci AES hanya ada di HP lama). Tidak disimpan ke DB.
+  final bool notesUnreadable;
   final String? photoPath;
   final String? aiSummary; // null = belum/tidak pernah dianalisis AI
   final String createdAt; // ISO-8601 UTC
@@ -39,6 +42,7 @@ class Coin {
     this.buyPrice,
     this.buyCurrency,
     this.notes,
+    this.notesUnreadable = false,
     this.photoPath,
     this.aiSummary,
     required this.createdAt,
@@ -112,7 +116,11 @@ class Coin {
   // Dari baris SQLite. `notes` adalah hasil dekripsi dari repo; null
   // kalau tidak ada catatan, atau kalau repo sengaja tidak mendekripsi
   // (lihat catatan di CoinRepo.list).
-  factory Coin.fromMap(Map<String, dynamic> map, {String? notes}) {
+  factory Coin.fromMap(
+    Map<String, dynamic> map, {
+    String? notes,
+    bool notesUnreadable = false,
+  }) {
     return Coin(
       id: map['id'] as String,
       userId: map['user_id'] as int,
@@ -125,6 +133,7 @@ class Coin {
       buyPrice: (map['buy_price'] as num?)?.toDouble(),
       buyCurrency: map['buy_currency'] as String?,
       notes: notes,
+      notesUnreadable: notesUnreadable,
       photoPath: map['photo_path'] as String?,
       aiSummary: map['ai_summary'] as String?,
       createdAt: map['created_at'] as String,

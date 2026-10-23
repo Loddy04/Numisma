@@ -15,10 +15,12 @@ import '../../models/coin.dart';
 import '../../services/auth_service.dart';
 import '../../services/coin_repo.dart';
 import '../../services/rates_service.dart';
+import '../../services/sync_service.dart';
 import '../../theme.dart';
 import 'coin_detail_screen.dart';
 import 'coin_form_screen.dart';
 import 'collection_filter_sheet.dart';
+import 'sync_screen.dart';
 
 class CollectionScreen extends StatefulWidget {
   const CollectionScreen({super.key});
@@ -32,7 +34,10 @@ class _CollectionScreenState extends State<CollectionScreen> {
   final _repo = CoinRepo();
   final _searchController = TextEditingController();
 
+  final _sync = SyncService();
+
   int? _userId;
+  int _pending = 0; // koin dan blok yang belum diunggah (lencana Sinkron)
   List<Coin> _coins = [];
   bool _loading = true;
 
@@ -85,9 +90,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
         yearTo: _filters.yearTo,
         sort: _filters.sort,
       );
+      final pending = await _sync.pendingCount(user);
       if (!mounted || myLoad != _loadId) return;
       setState(() {
         _userId = user.id;
+        _pending = pending;
         _coins = coins;
         _loading = false;
         // Buang pilihan untuk koin yang tidak lagi tampil di daftar.
@@ -122,6 +129,15 @@ class _CollectionScreenState extends State<CollectionScreen> {
     );
     if (result == null) return;
     setState(() => _filters = result);
+    _load();
+  }
+
+  // Layar Sinkron; sesudahnya daftar dimuat ulang karena Pulihkan bisa
+  // menambah koin.
+  Future<void> _openSync() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SyncScreen()));
     _load();
   }
 
@@ -256,7 +272,22 @@ class _CollectionScreenState extends State<CollectionScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
-    if (!_selecting) return AppBar(title: const Text('Koleksi'));
+    if (!_selecting) {
+      return AppBar(
+        title: const Text('Koleksi'),
+        actions: [
+          IconButton(
+            tooltip: 'Sinkron',
+            onPressed: _openSync,
+            icon: Badge(
+              isLabelVisible: _pending > 0,
+              label: Text('$_pending'),
+              child: const Icon(Icons.cloud_sync_outlined),
+            ),
+          ),
+        ],
+      );
+    }
 
     final valueLabel = _selectedValueLabel();
     return AppBar(

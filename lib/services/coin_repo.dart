@@ -6,6 +6,7 @@
 // Alur: screen -> coin_repo -> db_helper. Layar TIDAK PERNAH memanggil
 // database langsung.
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -16,6 +17,7 @@ import '../core/crypto_util.dart';
 import '../core/db_helper.dart';
 import '../models/coin.dart';
 import 'chain_service.dart';
+import 'sync_service.dart';
 import 'package:sqflite/sqflite.dart';
 
 class CoinRepo {
@@ -69,6 +71,10 @@ class CoinRepo {
       await _deleteFile(toSave.photoPath);
       rethrow;
     }
+
+    // Sinkron otomatis (Guide 7.4). Tanpa await: pengguna tidak menunggu
+    // jaringan, dan kegagalan (offline) ditelan di dalamnya.
+    unawaited(SyncService.syncQuietly(toSave.userId));
   }
 
   // Mengubah koin yang sudah ada. `updated_at` diperbarui dan
@@ -131,6 +137,8 @@ class CoinRepo {
     }
 
     if (photoBytes != null) await _deleteFile(coin.photoPath);
+
+    unawaited(SyncService.syncQuietly(coin.userId));
   }
 
   // Menghapus koin beserta file fotonya, supaya tidak ada file yatim
@@ -164,6 +172,8 @@ class CoinRepo {
     });
 
     await _deleteFile(coin.photoPath);
+
+    unawaited(SyncService.syncQuietly(coin.userId));
   }
 
   // Daftar koin milik satu pengguna, dengan cari/filter/urut (K11).
@@ -239,10 +249,19 @@ class CoinRepo {
 
     final row = rows.first;
     final notesEnc = row['notes_enc'] as String?;
-    final notes = notesEnc == null
-        ? null
-        : await CryptoUtil.decryptText(notesEnc);
-    return Coin.fromMap(row, notes: notes);
+    // Catatan hasil Pulihkan dari HP lain tidak bisa dibuka (kunci AES hanya
+    // ada di HP lama). Itu bukan kesalahan: layar menampilkan keterangannya,
+    // dan koin lainnya tetap tampil.
+    String? notes;
+    var unreadable = false;
+    if (notesEnc != null) {
+      try {
+        notes = await CryptoUtil.decryptText(notesEnc);
+      } catch (_) {
+        unreadable = true;
+      }
+    }
+    return Coin.fromMap(row, notes: notes, notesUnreadable: unreadable);
   }
 
   // ---------------------------------------------------------------

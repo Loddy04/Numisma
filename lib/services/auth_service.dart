@@ -26,6 +26,7 @@ import '../models/user.dart';
 import 'account_remote.dart';
 import 'chain_service.dart';
 import 'notif_service.dart';
+import 'sync_service.dart';
 
 class AuthService {
   // --- Pesan error dalam bahasa Indonesia, dibaca langsung oleh UI ---
@@ -190,13 +191,26 @@ class AuthService {
       createdAt: remote.createdAt,
     );
     final id = await db.insert('users', restored.toMap()..remove('id'));
+    final created = restored.copyWith(id: id);
 
-    // Genesis TIDAK dibuat di sini: Jejak Catatan milik akun ini mungkin
-    // sudah ada online, dan genesis baru akan bentrok dengan blok #0 yang
-    // lama. Pulihkan dulu (sync_service), genesis baru dibuat hanya bila
-    // online belum punya blok sama sekali.
+    // Pulihkan DULU, sebelum ada rantai di HP ini: Jejak Catatan akun ini
+    // mungkin sudah ada online, dan genesis baru akan bentrok dengan blok #0
+    // yang lama. restore() membuat genesis hanya bila online belum punya
+    // blok sama sekali. Bila pemulihan gagal (mis. internet putus di
+    // tengah), akun lokal yang baru dibuat dibatalkan dan login gagal
+    // dengan pesan ramah, supaya pengguna tidak masuk ke akun kosong yang
+    // nanti membuat genesis bentrok. Pemulihan berjalan dalam satu
+    // transaksi, jadi tidak ada data setengah jadi yang tertinggal.
+    try {
+      await SyncService().restore(created);
+    } catch (e) {
+      await db.delete('users', where: 'id = ?', whereArgs: [id]);
+      if (e is AccountException) rethrow;
+      throw const AccountException(AccountRemote.errGeneric);
+    }
+
     await SessionStore.createSession(id);
-    return restored.copyWith(id: id);
+    return created;
   }
 
   // Mengganti nama tampilan: online lebih dulu supaya HP dan Supabase tetap

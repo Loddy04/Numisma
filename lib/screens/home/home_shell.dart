@@ -5,6 +5,7 @@
 // dan tidak bisa menonjolkan satu ikon). Gantinya: Stack berisi bar
 // biasa + satu tombol bulat yang "naik" dari garis bar.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/coin_repo.dart';
 import '../../services/notif_service.dart';
+import '../../services/sync_service.dart';
 import '../../theme.dart';
 import '../../widgets/app_logo.dart';
 import '../auth/login_screen.dart';
@@ -58,10 +60,26 @@ class _HomeShellState extends State<HomeShell> {
   int _banknoteCount = 0;
   bool _statsLoaded = false;
 
+  // Mencoba mengunggah perubahan yang tertunda tiap menit. Tanpa paket
+  // pemantau koneksi: bila tadi offline, perubahan terkirim paling lambat
+  // semenit setelah internet kembali. Bila tidak ada yang tertunda, tidak
+  // ada permintaan jaringan sama sekali.
+  Timer? _syncTimer;
+
   @override
   void initState() {
     super.initState();
     _loadPhoto();
+    _syncTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
+      final user = await _authService.currentUser();
+      if (user != null) unawaited(SyncService.syncQuietly(user.id!));
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPhoto() async {
@@ -69,6 +87,9 @@ class _HomeShellState extends State<HomeShell> {
       final user = await _authService.currentUser();
       if (!mounted) return;
       setState(() => _photoPath = user?.photoPath);
+      // Sinkron otomatis saat Beranda dibuka dan saat ditarik untuk
+      // menyegarkan; tanpa await supaya tidak menahan layar.
+      if (user != null) unawaited(SyncService.syncQuietly(user.id!));
       // Ditunggu supaya indikator tarik-untuk-menyegarkan baru hilang setelah
       // jadwal pengingat selesai dimuat ulang.
       if (user != null) await _syncReminders(user.id!);
@@ -105,9 +126,7 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  // Item grid Beranda. Sinkron sementara tetap di sini (masih placeholder);
-  // rencananya dipindah ke layar Koleksi saat dibuat di Hari 5 (Guide 7.4),
-  // lalu grid kembali enam item (3x2).
+  // Item grid Beranda: enam ubin (3x2). Sinkron ada di AppBar layar Koleksi.
   static const _features = <_Feature>[
     _Feature('Koleksi', Icons.collections_bookmark_outlined),
     _Feature('Konversi', Icons.currency_exchange),
@@ -115,7 +134,6 @@ class _HomeShellState extends State<HomeShell> {
     _Feature('Jejak Catatan', Icons.link),
     _Feature('Tanya Numisma', Icons.chat_bubble_outline),
     _Feature('Game', Icons.sports_esports_outlined),
-    _Feature('Sinkron', Icons.cloud_sync_outlined),
   ];
 
   // Ikon Koleksi sudah punya halaman asli; sisanya masih placeholder
