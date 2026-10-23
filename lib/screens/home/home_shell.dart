@@ -19,6 +19,7 @@ import '../chain/chain_screen.dart';
 import '../chat/chat_screen.dart';
 import '../collection/collection_screen.dart';
 import '../convert/convert_screen.dart';
+import '../explore/explore_screen.dart';
 import '../feedback/feedback_screen.dart';
 import '../game/game_screen.dart';
 import '../profile/profile_screen.dart';
@@ -125,8 +126,7 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  // Ikon Koleksi sudah punya halaman asli; sisanya masih placeholder
-  // sampai fiturnya dibuat di hari-hari berikutnya.
+  // Membuka halaman fitur dari menu Daftar Isi di Beranda.
   void _openFeature(String label) {
     if (label == 'Koleksi') {
       // Jumlah koleksi di kartu Beranda dimuat ulang setelah kembali.
@@ -149,15 +149,11 @@ class _HomeShellState extends State<HomeShell> {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const GameScreen()));
-    } else {
-      _openPlaceholder(label);
+    } else if (label == 'Jelajah') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const ExploreScreen()));
     }
-  }
-
-  void _openPlaceholder(String title) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => _PlaceholderPage(title: title)));
   }
 
   // Scan = aksi cepat, bukan tab: langsung membuka scan_screen.dart. Hasilnya
@@ -356,20 +352,6 @@ class _HomeShellState extends State<HomeShell> {
       appBar: beranda ? null : AppBar(title: Text(_titles[_tab])),
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNav(),
-    );
-  }
-}
-
-// Halaman sementara untuk fitur yang belum dibuat.
-class _PlaceholderPage extends StatelessWidget {
-  final String title;
-  const _PlaceholderPage({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('$title — segera hadir')),
     );
   }
 }
