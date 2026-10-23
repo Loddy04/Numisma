@@ -40,11 +40,17 @@ class EventRepo {
     required DateTime startUtc,
     String? location,
     String? note,
+    double? lat,
+    double? lng,
   }) async {
     final db = await DbHelper.instance.database;
     final cleanTitle = title.trim();
     final cleanLocation = _nullIfBlank(location);
     final cleanNote = _nullIfBlank(note);
+    // Titik hanya berarti bila lat DAN lng ada; satu saja dianggap tanpa titik.
+    final hasPoint = lat != null && lng != null;
+    final cleanLat = hasPoint ? lat : null;
+    final cleanLng = hasPoint ? lng : null;
 
     final id = await db.insert('events', {
       'user_id': userId,
@@ -52,6 +58,8 @@ class EventRepo {
       'start_utc': startUtc.toUtc().toIso8601String(),
       'location': cleanLocation,
       'note': cleanNote,
+      'lat': cleanLat,
+      'lng': cleanLng,
     });
     return Event(
       id: id,
@@ -60,6 +68,8 @@ class EventRepo {
       startUtc: startUtc.toUtc(),
       location: cleanLocation,
       note: cleanNote,
+      lat: cleanLat,
+      lng: cleanLng,
     );
   }
 
@@ -69,6 +79,7 @@ class EventRepo {
   // sistem Android dibatalkan oleh pemanggil lewat NotifService.
   Future<Event> update(Event event) async {
     final db = await DbHelper.instance.database;
+    final hasPoint = event.lat != null && event.lng != null;
     final cleaned = Event(
       id: event.id,
       userId: event.userId,
@@ -76,6 +87,8 @@ class EventRepo {
       startUtc: event.startUtc.toUtc(),
       location: _nullIfBlank(event.location),
       note: _nullIfBlank(event.note),
+      lat: hasPoint ? event.lat : null,
+      lng: hasPoint ? event.lng : null,
     );
 
     await db.transaction((txn) async {
@@ -95,6 +108,8 @@ class EventRepo {
           'start_utc': cleaned.startUtc.toIso8601String(),
           'location': cleaned.location,
           'note': cleaned.note,
+          'lat': cleaned.lat,
+          'lng': cleaned.lng,
         },
         where: 'id = ?',
         whereArgs: [cleaned.id],
