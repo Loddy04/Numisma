@@ -19,6 +19,49 @@ class AppColors {
   static const textDark = Color(0xFF2A2117);
   static const danger = Color(0xFFB3261E);
   static const success = Color(0xFF2E7D32);
+
+  // Palet "buku koleksi" (kertas krem, tinta, merah marun). Dipakai mulai
+  // dari Beranda; layar lain masih memakai warna di atas dan dipindah
+  // bertahap, jadi warna lama sengaja belum dihapus.
+  static const paper = Color(0xFFF1E6D0);
+  static const ink = Color(0xFF1E1A14);
+  static const maroon = Color(0xFF7A2E24);
+}
+
+// Gaya teks bergaya buku lama memakai font bawaan Android (tanpa berkas
+// font tambahan): `serif` untuk judul dan nama, `monospace` untuk label
+// bergaya mesin ketik. Kesan vintage dibangun dari huruf kapital dengan
+// jarak antarhuruf lebar, huruf miring, dan garis, bukan dari font khusus.
+class AppText {
+  AppText._();
+
+  static TextStyle serif({
+    double size = 16,
+    FontWeight weight = FontWeight.w400,
+    bool italic = false,
+    double spacing = 0,
+    Color color = AppColors.ink,
+  }) => TextStyle(
+    fontFamily: 'serif',
+    fontSize: size,
+    fontWeight: weight,
+    fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+    letterSpacing: spacing,
+    color: color,
+  );
+
+  static TextStyle mono({
+    double size = 13,
+    FontWeight weight = FontWeight.w400,
+    double spacing = 0,
+    Color color = AppColors.ink,
+  }) => TextStyle(
+    fontFamily: 'monospace',
+    fontSize: size,
+    fontWeight: weight,
+    letterSpacing: spacing,
+    color: color,
+  );
 }
 
 class AppTheme {

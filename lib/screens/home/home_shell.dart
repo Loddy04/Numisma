@@ -6,8 +6,6 @@
 // biasa + satu tombol bulat yang "naik" dari garis bar.
 
 import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
@@ -15,7 +13,7 @@ import '../../services/coin_repo.dart';
 import '../../services/notif_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme.dart';
-import '../../widgets/app_logo.dart';
+import '../../widgets/double_rule.dart';
 import '../auth/login_screen.dart';
 import '../chain/chain_screen.dart';
 import '../chat/chat_screen.dart';
@@ -25,6 +23,7 @@ import '../feedback/feedback_screen.dart';
 import '../game/game_screen.dart';
 import '../profile/profile_screen.dart';
 import '../scan/scan_screen.dart';
+import 'beranda_view.dart';
 
 class HomeShell extends StatefulWidget {
   final String username;
@@ -126,16 +125,6 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  // Item grid Beranda: enam ubin (3x2). Sinkron ada di AppBar layar Koleksi.
-  static const _features = <_Feature>[
-    _Feature('Koleksi', Icons.collections_bookmark_outlined),
-    _Feature('Konversi', Icons.currency_exchange),
-    _Feature('Jelajah', Icons.map_outlined),
-    _Feature('Jejak Catatan', Icons.link),
-    _Feature('Tanya Numisma', Icons.chat_bubble_outline),
-    _Feature('Game', Icons.sports_esports_outlined),
-  ];
-
   // Ikon Koleksi sudah punya halaman asli; sisanya masih placeholder
   // sampai fiturnya dibuat di hari-hari berikutnya.
   void _openFeature(String label) {
@@ -156,7 +145,7 @@ class _HomeShellState extends State<HomeShell> {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const ChatScreen()));
-    } else if (label == 'Game') {
+    } else if (label == 'Permainan') {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => const GameScreen()));
@@ -229,77 +218,126 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  // Beranda: header (sapaan di kiri, merek di kanan), kartu ringkasan
-  // koleksi, lalu enam fitur. Tarik ke bawah untuk menyegarkan (foto profil,
-  // pengingat, dan jumlah koleksi dimuat ulang). ListView memakai
-  // AlwaysScrollableScrollPhysics supaya tarikan terdeteksi walau isinya
-  // muat dalam satu layar.
+  // Beranda bergaya buku koleksi; tampilannya ada di BerandaView. Tarik ke
+  // bawah untuk menyegarkan (foto profil, pengingat, jumlah koleksi).
   Widget _buildGrid() {
-    return Column(
-      children: [
-        // Sapaan menyambung dari AppBar: satu bidang perunggu dengan sudut
-        // bawah membulat, jadi bagian atas layar tetap berwarna.
-        _greeting(),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadPhoto,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-              children: [
-                _collectionCard(),
-                const SizedBox(height: 28),
-                Text(
-                  'MENU',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.4,
-                    color: AppColors.textDark.withValues(alpha: 0.55),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _featureGrid(),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return BerandaView(
+      username: _username,
+      photoPath: _photoPath,
+      coinCount: _coinCount,
+      banknoteCount: _banknoteCount,
+      statsLoaded: _statsLoaded,
+      onRefresh: _loadPhoto,
+      onOpen: _openFeature,
     );
   }
 
-  // Garis tipis perunggu: pembatas kartu tanpa bayangan tebal.
-  ShapeBorder _cardShape(double radius) => RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(radius),
-    side: BorderSide(color: AppColors.bronze.withValues(alpha: 0.25)),
-  );
-
-  // Sapaan di bawah AppBar. Username dari Splash (data akun yang login),
-  // tanpa baca database. Username panjang boleh turun ke baris kedua.
-  Widget _greeting() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 22),
-      decoration: const BoxDecoration(
-        color: AppColors.bronze,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+  // Satu ikon bar. Yang aktif diwarnai merah marun, sisanya tinta pudar.
+  Widget _navItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool active = false,
+  }) {
+    final color = active
+        ? AppColors.maroon
+        : AppColors.ink.withValues(alpha: 0.65);
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 2),
+            Text(label, style: AppText.serif(size: 14, color: color)),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  // Bottom nav bergaya buku: latar kertas, garis ganda di tepi atas (putus di
+  // belakang tombol Scan), tombol Scan merah marun yang menonjol. Tombol
+  // sengaja tetap DI DALAM area widget supaya bisa ditekan (area di luar
+  // batas induk tidak menerima sentuhan). Ruang gestur sistem di bawah
+  // ditambahkan manual supaya warnanya ikut kertas.
+  Widget _buildBottomNav() {
+    const barHeight = 72.0;
+    const scanSize = 64.0;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final totalHeight = barHeight + scanSize / 2 + bottomInset;
+
+    return SizedBox(
+      height: totalHeight,
+      child: Stack(
+        alignment: Alignment.bottomCenter,
         children: [
-          const Text(
-            'Halo,',
-            style: TextStyle(fontSize: 14, color: Colors.white70),
+          Container(
+            height: barHeight + bottomInset,
+            padding: EdgeInsets.only(top: 6, bottom: bottomInset),
+            color: AppColors.paper,
+            child: Row(
+              children: [
+                _navItem(
+                  icon: Icons.home_outlined,
+                  label: 'Beranda',
+                  active: _tab == _tabBeranda,
+                  onTap: () => setState(() => _tab = _tabBeranda),
+                ),
+                _navItem(
+                  icon: Icons.person_outline,
+                  label: 'Profil',
+                  active: _tab == _tabProfil,
+                  onTap: () => setState(() => _tab = _tabProfil),
+                ),
+                // Ruang kosong di tengah untuk tombol Scan.
+                const Expanded(child: SizedBox()),
+                _navItem(
+                  icon: Icons.rate_review_outlined,
+                  label: 'Saran',
+                  active: _tab == _tabSaran,
+                  onTap: () => setState(() => _tab = _tabSaran),
+                ),
+                _navItem(
+                  icon: Icons.logout,
+                  label: 'Keluar',
+                  onTap: _onLogout,
+                ),
+              ],
+            ),
           ),
-          Text(
-            _username,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 26,
-              height: 1.15,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          Positioned(
+            top: scanSize / 2,
+            left: 0,
+            right: 0,
+            child: const Row(
+              children: [
+                Expanded(child: DoubleRule()),
+                SizedBox(width: scanSize + 24),
+                Expanded(child: DoubleRule()),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 0,
+            child: Material(
+              color: AppColors.maroon,
+              shape: const CircleBorder(),
+              elevation: 4,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _onScan,
+                child: const SizedBox(
+                  width: scanSize,
+                  height: scanSize,
+                  child: Icon(
+                    Icons.center_focus_strong_outlined,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -307,259 +345,19 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  // Kartu ringkasan: hanya data nyata (jumlah koin dan uang kertas), diketuk
-  // untuk membuka Koleksi. Nilai uang sengaja tidak ditampilkan di sini karena
-  // butuh kurs dari internet dan memperlambat Beranda.
-  Widget _collectionCard() {
-    final total = _coinCount + _banknoteCount;
-    final detail = !_statsLoaded
-        ? ' '
-        : (total == 0
-              ? 'Belum ada koin. Ketuk untuk menambah.'
-              : '$_coinCount koin · $_banknoteCount uang kertas');
-    return Material(
-      color: AppColors.latte,
-      shape: _cardShape(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => _openFeature('Koleksi'),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Koleksimu',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textDark.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _statsLoaded ? '$total item' : '...',
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(detail, style: const TextStyle(fontSize: 13)),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.bronze),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Ubin fitur: ikon besar di tengah dengan label di bawahnya, di atas warna
-  // cokelat susu lembut. Tanpa bayangan dan tanpa efek kaca; pembatasnya
-  // garis tipis perunggu.
-  Widget _featureGrid() {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 3,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1,
-      children: [
-        for (final f in _features)
-          Material(
-            color: AppColors.latte,
-            shape: _cardShape(16),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => _openFeature(f.label),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(f.icon, size: 40, color: AppColors.bronze),
-                    const SizedBox(height: 10),
-                    Text(
-                      f.label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  // Satu ikon bar. Yang aktif diwarnai perunggu, sisanya abu-abu.
-  // `customIcon` menggantikan ikon bawaan (dipakai Profil untuk foto).
-  Widget _navItem({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool active = false,
-    Widget? customIcon,
-  }) {
-    final color = active ? AppColors.bronze : Colors.grey;
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            customIcon ?? Icon(icon, color: color),
-            Text(label, style: TextStyle(fontSize: 11, color: color)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Foto profil kecil berbentuk lingkaran sebagai ikon tab Profil.
-  // Null = belum ada foto, pakai ikon orang bawaan (customIcon null).
-  // Cincin perunggu menandai tab Profil sedang aktif.
-  Widget? _profileNavIcon() {
-    final path = _photoPath;
-    if (path == null) return null;
-    final active = _tab == _tabProfil;
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: active ? AppColors.bronze : Colors.transparent,
-          width: 2,
-        ),
-      ),
-      child: CircleAvatar(
-        radius: 11,
-        backgroundImage: FileImage(File(path)),
-        // File hilang tidak boleh membuat nav crash.
-        onBackgroundImageError: (_, _) {},
-      ),
-    );
-  }
-
-  Widget _buildBottomNav() {
-    const barHeight = 64.0;
-    const scanSize = 64.0;
-    // Tinggi total = bar + bagian tombol Scan yang menonjol di atasnya.
-    // Tombol sengaja tetap DI DALAM area widget supaya bisa ditekan
-    // (area di luar batas induk tidak menerima sentuhan).
-    const totalHeight = barHeight + scanSize / 2;
-
-    return SafeArea(
-      top: false,
-      child: SizedBox(
-        height: totalHeight,
-        child: Stack(
-          alignment: Alignment.bottomCenter,
-          children: [
-            Container(
-              height: barHeight,
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
-              ),
-              child: Row(
-                children: [
-                  _navItem(
-                    icon: Icons.home,
-                    label: 'Beranda',
-                    active: _tab == _tabBeranda,
-                    onTap: () => setState(() => _tab = _tabBeranda),
-                  ),
-                  _navItem(
-                    icon: Icons.person,
-                    customIcon: _profileNavIcon(),
-                    label: 'Profil',
-                    active: _tab == _tabProfil,
-                    onTap: () => setState(() => _tab = _tabProfil),
-                  ),
-                  // Ruang kosong di tengah untuk tombol Scan.
-                  const Expanded(child: SizedBox()),
-                  _navItem(
-                    icon: Icons.rate_review,
-                    label: 'Saran',
-                    active: _tab == _tabSaran,
-                    onTap: () => setState(() => _tab = _tabSaran),
-                  ),
-                  _navItem(
-                    icon: Icons.logout,
-                    label: 'Keluar',
-                    onTap: _onLogout,
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              top: 0,
-              child: Material(
-                color: AppColors.bronze,
-                shape: const CircleBorder(),
-                elevation: 6,
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: _onScan,
-                  child: const SizedBox(
-                    width: scanSize,
-                    height: scanSize,
-                    child: Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final beranda = _tab == _tabBeranda;
     return Scaffold(
-      // AppBar perunggu tetap ada di semua tab. Di Beranda judulnya disertai
-      // logo; tab lain teks saja.
-      appBar: AppBar(
-        title: _tab == _tabBeranda
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AppLogo(size: 28),
-                  const SizedBox(width: 8),
-                  Text(_titles[_tab]),
-                ],
-              )
-            : Text(_titles[_tab]),
-      ),
+      // Beranda memakai header sendiri di atas kertas krem (BerandaView), jadi
+      // tanpa AppBar. Tab lain masih memakai AppBar perunggu sampai
+      // gilirannya diganti.
+      backgroundColor: beranda ? AppColors.paper : null,
+      appBar: beranda ? null : AppBar(title: Text(_titles[_tab])),
       body: _buildBody(),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
-}
-
-class _Feature {
-  final String label;
-  final IconData icon;
-  const _Feature(this.label, this.icon);
 }
 
 // Halaman sementara untuk fitur yang belum dibuat.
@@ -575,3 +373,4 @@ class _PlaceholderPage extends StatelessWidget {
     );
   }
 }
+
