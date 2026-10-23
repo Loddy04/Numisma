@@ -20,7 +20,7 @@ import '../../services/event_repo.dart';
 import '../../services/location_service.dart';
 import '../../theme.dart';
 import '../../widgets/event_map.dart';
-import '../convert/event_detail_screen.dart';
+import 'event_detail_screen.dart';
 
 class MapTab extends StatefulWidget {
   const MapTab({super.key});
@@ -43,6 +43,7 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
 
   bool _mapReady = false;
   LatLng? _pendingCenter;
+  TabController? _tabs;
 
   // Peta dan daftar dipertahankan saat pengguna pindah ke tab Acara.
   @override
@@ -55,10 +56,39 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
     _locate();
   }
 
+  // Karena tab ini dipertahankan hidup, acara yang ditambah, diubah, atau
+  // dihapus di tab Acara tidak otomatis terlihat di sini. Karena itu acara
+  // dimuat ulang setiap pengguna kembali ke tab Peta.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tabs = DefaultTabController.maybeOf(context);
+    if (tabs != _tabs) {
+      _tabs?.removeListener(_onTabChanged);
+      _tabs = tabs;
+      _tabs?.addListener(_onTabChanged);
+    }
+  }
+
+  void _onTabChanged() {
+    final tabs = _tabs;
+    if (tabs != null && !tabs.indexIsChanging && tabs.index == 0) {
+      _loadEvents();
+    }
+  }
+
   @override
   void dispose() {
+    _tabs?.removeListener(_onTabChanged);
     _controller.dispose();
     super.dispose();
+  }
+
+  // Segarkan manual (tombol atau tarik daftar): acara dimuat ulang, dan
+  // posisi GPS diambil lagi kecuali pengguna sedang memakai lokasi manual.
+  Future<void> _refresh() async {
+    await _loadEvents();
+    if (!_manual) await _locate();
   }
 
   Future<void> _loadEvents() async {
@@ -148,8 +178,7 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
       for (final e in _list)
         if (e.hasPoint)
           eventMarker(LatLng(e.lat!, e.lng!), onTap: () => _openDetail(e)),
-      if (_position != null)
-        userMarker(LatLng(_position!.lat, _position!.lng)),
+      if (_position != null) userMarker(LatLng(_position!.lat, _position!.lng)),
     ];
   }
 
@@ -193,17 +222,29 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
         Positioned(
           right: 12,
           bottom: 28,
-          child: FloatingActionButton.small(
-            heroTag: 'map-my-location',
-            tooltip: 'Lokasi saya',
-            onPressed: _locating ? null : _locate,
-            child: _locating
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.my_location),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton.small(
+                heroTag: 'map-refresh',
+                tooltip: 'Segarkan peta',
+                onPressed: _refresh,
+                child: const Icon(Icons.refresh),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton.small(
+                heroTag: 'map-my-location',
+                tooltip: 'Lokasi saya',
+                onPressed: _locating ? null : _locate,
+                child: _locating
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location),
+              ),
+            ],
           ),
         ),
       ],
@@ -244,34 +285,40 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
               if (e.hasPoint) EventDistance(e, double.nan),
           ];
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      children: [
-        Text(
-          pos == null ? 'Acara bertitik' : 'Acara terdekat',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
-          ),
-        ),
-        const SizedBox(height: 2),
-        const Text(
-          'Tekan lama pada peta untuk menentukan lokasi manual.',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 8),
-        if (rows.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Text(
-              'Belum ada acara bertitik. Tambahkan lokasi di peta saat '
-              'membuat atau mengubah acara.',
+    // Tarik ke bawah untuk menyegarkan; AlwaysScrollable supaya tarikan
+    // terdeteksi walau isinya sedikit.
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        children: [
+          Text(
+            pos == null ? 'Acara bertitik' : 'Acara terdekat',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
             ),
-          )
-        else
-          for (final r in rows) _row(r),
-      ],
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Tekan lama pada peta untuk menentukan lokasi manual.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          if (rows.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Belum ada acara bertitik. Tambahkan lokasi di peta saat '
+                'membuat atau mengubah acara.',
+              ),
+            )
+          else
+            for (final r in rows) _row(r),
+        ],
+      ),
     );
   }
 

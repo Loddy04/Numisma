@@ -1,15 +1,18 @@
-// screens/convert/event_detail_screen.dart
+// screens/explore/event_detail_screen.dart
 // Detail satu acara kolektor (NUMISMA_GUIDE 0.5, Bagian 7.7b): nama, lokasi,
 // waktu di satu zona pilihan, catatan, dan pengingat (Bagian 7.12). Dari
 // sini pengguna mengubah atau menghapus acara, dan memasang atau
 // membatalkan pengingat. Kartu daftar hanya menampilkan ringkasannya.
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/format_util.dart';
+import '../../core/geo_util.dart';
 import '../../core/time_util.dart';
 import '../../models/event.dart';
 import '../../services/event_repo.dart';
+import '../../services/location_service.dart';
 import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/confirm_dialog.dart';
@@ -34,11 +37,43 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   bool _loading = true;
   bool _busy = false; // sedang memasang/membatalkan pengingat
   String _zone = zoneWib;
+  // Jarak dari posisi pengguna ke titik acara (meter); null = belum diketahui
+  // (GPS belum siap, izin ditolak, atau acara tanpa titik).
+  double? _distance;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  // Menghitung jarak dengan GPS. Gagal tidak mengganggu: kartu lokasi tetap
+  // tampil dan Rute tetap bisa dipakai (Google Maps yang mencari posisimu).
+  Future<void> _loadDistance(Event event) async {
+    if (!event.hasPoint) return;
+    try {
+      final p = await LocationService().currentPosition();
+      if (!mounted) return;
+      setState(
+        () => _distance = distanceMeters(p.lat, p.lng, event.lat!, event.lng!),
+      );
+    } catch (_) {}
+  }
+
+  // Membuka Google Maps dengan petunjuk arah ke titik acara (Maps URLs).
+  // Tanpa SDK dan tanpa API key; tujuan saja yang dikirim, posisi asal
+  // ditentukan Google Maps sendiri.
+  Future<void> _openRoute(Event event) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1'
+      '&destination=${event.lat},${event.lng}',
+    );
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) _snack('Tidak bisa membuka Google Maps.');
+    } catch (_) {
+      if (mounted) _snack('Tidak bisa membuka Google Maps.');
+    }
   }
 
   Future<void> _load() async {
@@ -57,6 +92,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         _remindAt = reminders[event.id];
         _loading = false;
       });
+      _loadDistance(event);
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -246,6 +282,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
           ),
         ),
+        if (event.hasPoint) ...[
+          const SizedBox(height: 12),
+          _locationCard(event),
+        ],
         const SizedBox(height: 12),
         _reminderCard(event),
         const SizedBox(height: 12),
@@ -267,6 +307,48 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // Kartu lokasi (hanya untuk acara bertitik): koordinat, jarak dari
+  // posisimu bila sudah diketahui, dan tombol Rute.
+  Widget _locationCard(Event event) {
+    final distance = _distance;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Lokasi di peta',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${event.lat!.toStringAsFixed(5)}, '
+              '${event.lng!.toStringAsFixed(5)}',
+            ),
+            if (distance != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${formatDistance(distance)} dari posisimu',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.bronze,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => _openRoute(event),
+              icon: const Icon(Icons.directions),
+              label: const Text('Rute'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

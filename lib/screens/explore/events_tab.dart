@@ -14,9 +14,10 @@ import '../../services/auth_service.dart';
 import '../../services/event_repo.dart';
 import '../../services/notif_service.dart';
 import '../../theme.dart';
+import '../../widgets/world_clock_card.dart';
 import '../../widgets/zone_picker.dart';
-import '../convert/event_detail_screen.dart';
-import '../convert/event_form_screen.dart';
+import 'event_detail_screen.dart';
+import 'event_form_screen.dart';
 
 class EventsTab extends StatefulWidget {
   const EventsTab({super.key});
@@ -101,6 +102,10 @@ class _EventsTabState extends State<EventsTab> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          // Jam dunia di atas daftar, supaya waktu acara mudah dibandingkan
+          // dengan waktu sekarang di tiap zona.
+          const WorldClockCard(),
+          const SizedBox(height: 24),
           Row(
             children: [
               const Expanded(

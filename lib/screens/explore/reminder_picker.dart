@@ -1,4 +1,4 @@
-// screens/convert/reminder_picker.dart
+// screens/explore/reminder_picker.dart
 // Pemilih "berapa lama sebelum acara" untuk pengingat (NUMISMA_GUIDE 0.5,
 // Bagian 7.12). Pengguna memilih SELISIH, bukan jam alarm: jam pengingat
 // dihitung otomatis sebagai waktu_mulai - selisih. Pilihan cepat tersedia,

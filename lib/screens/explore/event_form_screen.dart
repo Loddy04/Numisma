@@ -1,10 +1,11 @@
-// screens/convert/event_form_screen.dart
+// screens/explore/event_form_screen.dart
 // Form acara kolektor (NUMISMA_GUIDE 0.5, Bagian 7.7b), satu form untuk dua
 // mode: tambah (event == null) dan ubah. Jam yang diisi SELALU dibaca WIB
 // (tidak ada pilihan zona input); di database waktunya disimpan UTC, dan
 // kartu/detail bisa menampilkannya di zona lain lewat pilihan zona.
 
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../core/format_util.dart';
 import '../../core/time_util.dart';
@@ -13,6 +14,7 @@ import '../../services/event_repo.dart';
 import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/confirm_dialog.dart';
+import 'location_picker_screen.dart';
 
 // Hasil yang dikembalikan form ke layar pemanggil.
 enum EventFormResult { saved, deleted }
@@ -36,6 +38,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
   DateTime? _date; // hanya tanggalnya (jam diabaikan)
   TimeOfDay? _time;
+  LatLng? _point; // titik lokasi di peta; null = acara tanpa titik
   bool _submitted =
       false; // supaya tanggal/jam kosong baru ditandai merah setelah Simpan
   bool _saving = false;
@@ -52,6 +55,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
     _titleController.text = e.title;
     _locationController.text = e.location ?? '';
     _noteController.text = e.note ?? '';
+    if (e.hasPoint) _point = LatLng(e.lat!, e.lng!);
     final t = toZone(e.startUtc, zoneWib);
     _date = DateTime(t.year, t.month, t.day);
     _time = TimeOfDay(hour: t.hour, minute: t.minute);
@@ -101,6 +105,30 @@ class _EventFormScreenState extends State<EventFormScreen> {
     if (picked != null) setState(() => _time = picked);
   }
 
+  // Membuka pemilih titik di peta. Acara lain yang sudah bertitik ikut tampil
+  // (abu-abu) sebagai patokan; acara yang sedang diubah tidak ikut karena
+  // titiknya sendiri yang sedang dipilih. Kembali tanpa memilih = tidak
+  // berubah; "Hapus titik" mengembalikan PickResult(null).
+  Future<void> _pickPoint() async {
+    List<Event> others = const [];
+    try {
+      final all = await _repo.list(widget.userId);
+      others = [
+        for (final e in all)
+          if (e.id != widget.event?.id) e,
+      ];
+    } catch (_) {
+      // Patokan hanya pelengkap; pemilih tetap bisa dipakai tanpa itu.
+    }
+    if (!mounted) return;
+    final result = await Navigator.of(context).push<PickResult>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(initial: _point, others: others),
+      ),
+    );
+    if (result != null) setState(() => _point = result.point);
+  }
+
   Future<void> _save() async {
     setState(() => _submitted = true);
     if (!_formKey.currentState!.validate()) return;
@@ -144,6 +172,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
             startUtc: startUtc,
             location: _locationController.text,
             note: _noteController.text,
+            lat: _point?.latitude,
+            lng: _point?.longitude,
           ),
         );
         // Waktu berubah = pengingat lama tidak berlaku: batalkan alarmnya
@@ -167,6 +197,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
           startUtc: startUtc,
           location: _locationController.text,
           note: _noteController.text,
+          lat: _point?.latitude,
+          lng: _point?.longitude,
         );
       }
       if (!mounted) return;
@@ -256,6 +288,19 @@ class _EventFormScreenState extends State<EventFormScreen> {
               decoration: const InputDecoration(labelText: 'Lokasi (opsional)'),
             ),
             const SizedBox(height: 4),
+            // Titik di peta (opsional): acara bertitik tampil di tab Peta
+            // Jelajah dengan jarak dari posisi pengguna.
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _pickPoint,
+              icon: const Icon(Icons.pin_drop_outlined),
+              label: Text(
+                _point == null
+                    ? 'Pilih titik di peta (opsional)'
+                    : 'Titik: ${_point!.latitude.toStringAsFixed(5)}, '
+                          '${_point!.longitude.toStringAsFixed(5)} · ubah',
+              ),
+            ),
+            const SizedBox(height: 16),
             _pickerBox(
               label: 'Tanggal',
               value: date == null
