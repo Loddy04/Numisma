@@ -31,7 +31,7 @@ class DbHelper {
 
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         // Wajib dinyalakan manual di sqflite, beda dari SQLite
         // command-line yang sudah default ON.
@@ -67,6 +67,14 @@ class DbHelper {
       await db.execute('DROP TABLE IF EXISTS users');
       await _createUsersTable(db);
       await _createEventTables(db);
+    }
+    // v4 -> v5: Jejak Catatan dijangkarkan ke blockchain (Sepolia); kolom
+    // tx_hash menyimpan nomor transaksinya. Hanya menambah kolom, tidak ada
+    // data yang hilang. Jalur dari versi lama ikut lewat sini setelah
+    // pembangunan ulang di atas, karena tabel chain_blocks-nya belum punya
+    // kolom ini.
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE chain_blocks ADD COLUMN tx_hash TEXT');
     }
   }
 
@@ -153,6 +161,7 @@ class DbHelper {
         nonce INTEGER NOT NULL,
         hash TEXT NOT NULL,
         is_synced INTEGER NOT NULL DEFAULT 0,
+        tx_hash TEXT,
         UNIQUE (user_id, idx)
       )
     ''');

@@ -32,6 +32,7 @@ import '../core/db_helper.dart';
 import '../models/block.dart';
 import '../models/user.dart';
 import 'account_remote.dart';
+import 'chain_anchor_service.dart';
 import 'chain_service.dart';
 
 // Hasil satu kali upload atau restore, untuk ditampilkan di layar Sinkron.
@@ -109,7 +110,12 @@ class SyncService {
         _rerun = false;
         final user = await _userById(userId);
         if (user == null) break;
-        await SyncService().upload(user);
+        final result = await SyncService().upload(user);
+        // Setelah data aman di Supabase, blok terakhir dijangkarkan ke
+        // blockchain (Sepolia). Bila ada konflik rantai, jangan menjangkarkan
+        // rantai yang sedang bermasalah. Kegagalan di sini ditelan di dalam
+        // anchorQuietly dan dicoba lagi nanti.
+        if (!result.hasConflict) await ChainAnchorService.anchorQuietly(user);
       } while (_rerun);
     } catch (_) {
       // Sengaja diam; lihat komentar di atas.
@@ -542,6 +548,9 @@ class SyncService {
             nonce: (r['nonce'] as num).toInt(),
             hash: r['hash'] as String,
             isSynced: true,
+            // Ada bila kolom tx_hash sudah ditambahkan di Supabase; bila
+            // belum, nilainya kosong dan tidak mengganggu.
+            txHash: r['tx_hash'] as String?,
           ),
         );
       }

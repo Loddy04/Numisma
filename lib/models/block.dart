@@ -17,6 +17,10 @@ class ChainBlock {
   final int nonce;
   final String hash;
   final bool isSynced;
+  // Nomor transaksi di jaringan Sepolia bila blok ini sudah dijangkarkan
+  // (null = belum). TIDAK ikut dalam rumus hash blok, jadi mengisinya tidak
+  // mengubah hash maupun hasil verifikasi.
+  final String? txHash;
 
   const ChainBlock({
     this.id,
@@ -32,6 +36,7 @@ class ChainBlock {
     required this.nonce,
     required this.hash,
     this.isSynced = false,
+    this.txHash,
   });
 
   Map<String, dynamic> toMap() => {
@@ -48,6 +53,7 @@ class ChainBlock {
     'nonce': nonce,
     'hash': hash,
     'is_synced': isSynced ? 1 : 0,
+    'tx_hash': txHash,
   };
 
   factory ChainBlock.fromMap(Map<String, dynamic> map) => ChainBlock(
@@ -64,5 +70,6 @@ class ChainBlock {
     nonce: map['nonce'] as int,
     hash: map['hash'] as String,
     isSynced: (map['is_synced'] as int) == 1,
+    txHash: map['tx_hash'] as String?,
   );
 }

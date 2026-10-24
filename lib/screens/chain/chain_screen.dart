@@ -4,10 +4,14 @@
 // ChainService (aturan Bagian 4.1).
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config.dart';
 import '../../core/time_util.dart';
 import '../../models/block.dart';
+import '../../models/user.dart';
 import '../../services/auth_service.dart';
+import '../../services/chain_anchor_service.dart';
 import '../../services/chain_service.dart';
 import '../../services/coin_repo.dart';
 import '../../theme.dart';
@@ -23,6 +27,11 @@ class _ChainScreenState extends State<ChainScreen> {
   final _chain = ChainService();
   final _coins = CoinRepo();
   final _auth = AuthService();
+  final _anchor = ChainAnchorService();
+
+  User? _user;
+  AnchorCheck? _anchorCheck; // hasil "Periksa di jaringan" terakhir
+  bool _anchorBusy = false;
 
   int? _userId;
   List<ChainBlock> _blocks = [];
@@ -52,6 +61,7 @@ class _ChainScreenState extends State<ChainScreen> {
         return;
       }
       _userId = user.id!;
+      _user = user;
       // Akun lama (dibuat sebelum fitur ini) dibuatkan rantai pada pembukaan
       // pertama; akun yang sudah punya rantai tidak diubah.
       await _chain.ensureChain(_userId!);
@@ -87,6 +97,61 @@ class _ChainScreenState extends State<ChainScreen> {
       _snack('Verifikasi gagal dijalankan. Coba lagi.');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  // Blok terakhir yang sudah dijangkarkan ke jaringan (null = belum ada).
+  ChainBlock? get _lastAnchored {
+    for (final b in _blocks.reversed) {
+      if (b.txHash != null) return b;
+    }
+    return null;
+  }
+
+  // Mengirim blok terakhir ke jaringan sekarang (selain pengiriman otomatis
+  // setelah sinkron).
+  Future<void> _anchorNow() async {
+    final user = _user;
+    if (user == null) return;
+    setState(() => _anchorBusy = true);
+    try {
+      final tx = await _anchor.anchorHead(user);
+      _snack(
+        tx == null
+            ? 'Blok terakhir sudah tercatat di jaringan.'
+            : 'Terkirim ke jaringan. Konfirmasi butuh sekitar setengah menit.',
+      );
+      await _load();
+    } on AnchorException catch (e) {
+      _snack(e.message);
+    } catch (_) {
+      _snack(ChainAnchorService.errGeneric);
+    } finally {
+      if (mounted) setState(() => _anchorBusy = false);
+    }
+  }
+
+  Future<void> _checkAnchor() async {
+    final user = _user;
+    if (user == null) return;
+    setState(() => _anchorBusy = true);
+    final check = await _anchor.checkOnChain(user);
+    if (!mounted) return;
+    setState(() {
+      _anchorCheck = check;
+      _anchorBusy = false;
+    });
+  }
+
+  Future<void> _openExplorer(String txHash) async {
+    try {
+      final ok = await launchUrl(
+        Uri.parse(ChainAnchorService.explorerUrl(txHash)),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!ok) _snack('Tidak bisa membuka Etherscan.');
+    } catch (_) {
+      _snack('Tidak bisa membuka Etherscan.');
     }
   }
 
@@ -132,6 +197,10 @@ class _ChainScreenState extends State<ChainScreen> {
         padding: const EdgeInsets.all(12),
         children: [
           _helpCard(),
+          if (Config.ethConfigured) ...[
+            const SizedBox(height: 8),
+            _anchorCard(),
+          ],
           const SizedBox(height: 8),
           _actions(),
           if (_result != null) _summary(_result!),
@@ -159,6 +228,90 @@ class _ChainScreenState extends State<ChainScreen> {
           'yang saling terkait lewat hash. Menjamin catatan tidak diubah '
           'diam-diam. Tidak membuktikan keaslian atau kepemilikan koin fisik.',
           style: TextStyle(fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  // Kartu status blockchain: blok terakhir yang sudah dicatat di Sepolia,
+  // tombol buka Etherscan, periksa kecocokan dengan jaringan, dan kirim
+  // sekarang. Pengiriman otomatis terjadi setelah sinkron.
+  Widget _anchorCard() {
+    final last = _lastAnchored;
+    final check = _anchorCheck;
+    Color colorOf(AnchorState s) => switch (s) {
+      AnchorState.matched => AppColors.success,
+      AnchorState.mismatch || AnchorState.failed => AppColors.danger,
+      _ => Colors.grey,
+    };
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.link, color: AppColors.bronze),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Blockchain Sepolia',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (_anchorBusy)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              last == null
+                  ? 'Belum ada blok yang dicatat di jaringan. Pencatatan '
+                        'berjalan otomatis setelah sinkron.'
+                  : 'Terakhir dicatat: blok #${last.idx} · tx '
+                        '${last.txHash!.substring(0, 10)}…',
+              style: const TextStyle(fontSize: 13),
+            ),
+            if (check != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  check.message,
+                  style: TextStyle(
+                    color: colorOf(check.state),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                OutlinedButton(
+                  onPressed: _anchorBusy ? null : _anchorNow,
+                  child: const Text('Catat sekarang'),
+                ),
+                if (last != null) ...[
+                  OutlinedButton(
+                    onPressed: _anchorBusy ? null : _checkAnchor,
+                    child: const Text('Periksa di jaringan'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => _openExplorer(last.txHash!),
+                    child: const Text('Etherscan'),
+                  ),
+                ],
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -258,6 +411,14 @@ class _ChainScreenState extends State<ChainScreen> {
             ),
             if (coinName != null) Text(coinName),
             Text(time, style: const TextStyle(color: Colors.grey)),
+            if (b.txHash != null)
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Text(
+                  '⛓ tercatat di jaringan Sepolia',
+                  style: TextStyle(fontSize: 12, color: AppColors.bronze),
+                ),
+              ),
             const SizedBox(height: 4),
             Text(
               'hash ${_short(b.hash)} · sebelumnya ${_short(b.prevHash)} · nonce ${b.nonce}',
