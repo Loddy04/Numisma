@@ -21,6 +21,28 @@ class Config {
   static String get supabaseUrl => _readRequired('SUPABASE_URL');
   static String get supabaseAnonKey => _readRequired('SUPABASE_ANON_KEY');
 
+  // Blockchain (Jejak Catatan dijangkarkan ke testnet Ethereum Sepolia).
+  // Kunci privat adalah dompet testnet khusus proyek (tanpa nilai uang) dan
+  // ikut terbundel di APK seperti kunci lain, jadi JANGAN pernah memakai
+  // kunci dompet berisi uang asli.
+  static String get ethPrivateKey => _readRequired('ETH_PRIVATE_KEY');
+  static int get ethChainId => int.parse(_readRequired('ETH_CHAIN_ID'));
+  static String get ethRpcUrl => _readRequired('ETH_RPC_URL');
+
+  // true bila ketiga nilai blockchain terisi. Bila belum (mis. HP lain tanpa
+  // .env lengkap), penjangkaran dimatikan diam-diam dan aplikasi tetap jalan.
+  static bool get ethConfigured {
+    for (final key in const [
+      'ETH_PRIVATE_KEY',
+      'ETH_CHAIN_ID',
+      'ETH_RPC_URL',
+    ]) {
+      final v = dotenv.env[key];
+      if (v == null || v.isEmpty) return false;
+    }
+    return int.tryParse(dotenv.env['ETH_CHAIN_ID']!) != null;
+  }
+
   // Helper kecil: kalau key belum diisi di .env, lempar error yang
   // jelas sekarang juga, daripada error samar "null" di tengah proses
   // scan AI atau sinkronisasi nanti.
