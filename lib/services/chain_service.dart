@@ -51,7 +51,7 @@ class ChainService {
   // Snapshot koin yang di-hash: HANYA field bermakna dan stabil. Sengaja
   // tanpa notes_enc, ai_summary, photo_path, dan timestamp (ciphertext AES
   // berubah tiap enkripsi karena IV acak). Tipe dijaga tetap: denomination
-  // dan buy_price selalu double, year selalu int, supaya 100 dan "100" tidak
+  // selalu double, year selalu int, supaya 100 dan "100" tidak
   // menghasilkan hash berbeda.
   static Map<String, dynamic> snapshotOf(Coin coin) => {
     'id': coin.id,
@@ -61,8 +61,6 @@ class ChainService {
     'denomination': coin.denomination,
     'year': coin.year,
     'condition': coin.condition,
-    'buy_price': coin.buyPrice,
-    'buy_currency': coin.buyCurrency,
   };
 
   // JSON kanonik: kunci diurutkan, jadi urutan penyusunan map tidak

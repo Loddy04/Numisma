@@ -178,9 +178,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
       return const Center(child: Text('Koin tidak ditemukan.'));
     }
     final jenis = coin.type == 'banknote' ? 'Uang kertas' : 'Koin';
-    final harga = coin.buyPrice == null
-        ? null
-        : '${coin.buyPrice} ${coin.buyCurrency ?? ''}'.trim();
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -196,7 +193,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
         _row('Negara', coin.country),
         _row('Tahun', coin.year?.toString()),
         _row('Kondisi', coin.condition),
-        _row('Harga beli', harga),
         _row(
           'Catatan',
           coin.notesUnreadable

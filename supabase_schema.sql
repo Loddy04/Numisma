@@ -28,8 +28,6 @@ create table if not exists coins (
   denomination double precision not null,
   year int,
   condition text,
-  buy_price double precision,
-  buy_currency text,
   notes_enc text,                    -- ciphertext AES; tidak terbuka di perangkat tanpa kunci lama
   ai_summary text,
   has_photo boolean not null default false,   -- ada foto di Storage
@@ -38,6 +36,9 @@ create table if not exists coins (
 );
 -- Untuk tabel coins yang sudah dibuat dengan skema lama.
 alter table coins add column if not exists has_photo boolean not null default false;
+-- Harga beli dan mata uang beli dibuang (DB lokal v6).
+alter table coins drop column if exists buy_price;
+alter table coins drop column if exists buy_currency;
 
 create table if not exists chain_blocks (
   id text primary key,               -- "{user_key}:{idx}"

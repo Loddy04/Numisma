@@ -31,7 +31,7 @@ class DbHelper {
 
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (db) async {
         // Wajib dinyalakan manual di sqflite, beda dari SQLite
         // command-line yang sudah default ON.
@@ -76,6 +76,20 @@ class DbHelper {
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE chain_blocks ADD COLUMN tx_hash TEXT');
     }
+    // v5 -> v6: kolom buy_price dan buy_currency dibuang dari coins. Keduanya
+    // ikut dalam snapshot hash Jejak Catatan (data_hash), jadi mengubah
+    // snapshot membuat data_hash semua blok lama tidak cocok lagi dan blok
+    // yang sudah dibuat tidak boleh diubah. Karena itu koin dan rantainya
+    // dikosongkan (keputusan pemilik proyek; isinya masih data uji), lalu
+    // tabel coins dibangun ulang tanpa kedua kolom. Data lain (akun, acara,
+    // skor, saran) tidak disentuh. chain_blocks dikosongkan lebih dulu karena
+    // merujuk ke koin; genesis dibuat lagi otomatis saat Jejak Catatan dibuka
+    // atau koin pertama ditambahkan.
+    if (oldVersion < 6) {
+      await db.execute('DELETE FROM chain_blocks');
+      await db.execute('DROP TABLE IF EXISTS coins');
+      await _createCoinsTable(db);
+    }
   }
 
   // Dipakai onCreate (HP bersih) dan onUpgrade, supaya kedua jalur
@@ -93,6 +107,29 @@ class DbHelper {
         created_at TEXT NOT NULL
       )
     ''');
+  }
+
+  // Tanpa harga beli dan mata uang beli (dibuang di v6).
+  Future<void> _createCoinsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE coins (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        type TEXT NOT NULL CHECK (type IN ('coin','banknote')),
+        country TEXT NOT NULL,
+        currency_code TEXT NOT NULL,
+        denomination REAL NOT NULL,
+        year INTEGER,
+        condition TEXT,
+        notes_enc TEXT,
+        photo_path TEXT,
+        ai_summary TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        is_synced INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_coins_user ON coins(user_id)');
   }
 
   Future<void> _createEventTables(Database db) async {
@@ -123,28 +160,7 @@ class DbHelper {
 
   Future<void> _onCreate(Database db, int version) async {
     await _createUsersTable(db);
-
-    await db.execute('''
-      CREATE TABLE coins (
-        id TEXT PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id),
-        type TEXT NOT NULL CHECK (type IN ('coin','banknote')),
-        country TEXT NOT NULL,
-        currency_code TEXT NOT NULL,
-        denomination REAL NOT NULL,
-        year INTEGER,
-        condition TEXT,
-        buy_price REAL,
-        buy_currency TEXT,
-        notes_enc TEXT,
-        photo_path TEXT,
-        ai_summary TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        is_synced INTEGER NOT NULL DEFAULT 0
-      )
-    ''');
-    await db.execute('CREATE INDEX idx_coins_user ON coins(user_id)');
+    await _createCoinsTable(db);
 
     await db.execute('''
       CREATE TABLE chain_blocks (

@@ -56,11 +56,9 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
   // Kode mata uang dipilih lewat CurrencyPickerField, jadi disimpan
   // sebagai String? (kode 3 huruf), bukan controller teks.
   String? _currencyCode;
-  String? _buyCurrencyCode;
   final _country = TextEditingController();
   final _denomination = TextEditingController();
   final _year = TextEditingController();
-  final _buyPrice = TextEditingController();
   final _notes = TextEditingController();
 
   // Foto baru yang dipilih pengguna (belum disimpan). Kalau null,
@@ -85,8 +83,6 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
       _currencyCode = c.currencyCode;
       _denomination.text = c.denominationLabel;
       _year.text = c.year?.toString() ?? '';
-      _buyPrice.text = c.buyPrice?.toString() ?? '';
-      _buyCurrencyCode = c.buyCurrency;
       _notes.text = c.notes ?? '';
     }
 
@@ -120,7 +116,6 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
     _country.dispose();
     _denomination.dispose();
     _year.dispose();
-    _buyPrice.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -147,13 +142,6 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
       return 'Tahun tidak valid.';
     }
     return null;
-  }
-
-  String? _validateBuyPrice(String? v) {
-    final text = v?.trim() ?? '';
-    if (text.isEmpty) return null;
-    final n = _parseNumber(text);
-    return (n == null || n < 0) ? 'Harga beli tidak valid.' : null;
   }
 
   // --- Foto ----------------------------------------------------------
@@ -272,8 +260,6 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
       final currency = _currencyCode!; // sudah divalidasi wajib dipilih
       final denomination = _parseNumber(_denomination.text)!;
       final year = int.tryParse(_year.text.trim());
-      final buyPrice = _parseNumber(_buyPrice.text);
-      final buyCurrency = _buyCurrencyCode;
       final notes = _nullIfEmpty(_notes.text);
 
       final old = widget.coin;
@@ -286,8 +272,6 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
           denomination: denomination,
           year: year,
           condition: _condition,
-          buyPrice: buyPrice,
-          buyCurrency: buyCurrency,
           notes: notes,
           aiSummary: widget.guess?.summary,
         );
@@ -308,8 +292,6 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
           denomination: denomination,
           year: year,
           condition: _condition,
-          buyPrice: buyPrice,
-          buyCurrency: buyCurrency,
           notes: notes,
           photoPath: old.photoPath,
           aiSummary: old.aiSummary,
@@ -501,23 +483,6 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
                   ),
                 ),
               ],
-            ),
-            gap,
-            TextFormField(
-              controller: _buyPrice,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Harga beli (opsional)',
-              ),
-              validator: _validateBuyPrice,
-            ),
-            gap,
-            CurrencyPickerField(
-              label: 'Mata uang beli (opsional)',
-              initialCode: _buyCurrencyCode,
-              onChanged: (code) => _buyCurrencyCode = code,
             ),
             gap,
             TextFormField(

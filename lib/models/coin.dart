@@ -18,8 +18,6 @@ class Coin {
   final double denomination; // nominal, mis. 100
   final int? year;
   final String? condition; // UNC, XF, VF, F, G
-  final double? buyPrice;
-  final String? buyCurrency;
   final String? notes; // teks asli; di DB tersimpan terenkripsi
   // true = ada catatan terenkripsi tetapi gagal dibuka (mis. setelah Pulihkan
   // di HP lain: kunci AES hanya ada di HP lama). Tidak disimpan ke DB.
@@ -39,8 +37,6 @@ class Coin {
     required this.denomination,
     this.year,
     this.condition,
-    this.buyPrice,
-    this.buyCurrency,
     this.notes,
     this.notesUnreadable = false,
     this.photoPath,
@@ -61,8 +57,6 @@ class Coin {
     required double denomination,
     int? year,
     String? condition,
-    double? buyPrice,
-    String? buyCurrency,
     String? notes,
     String? aiSummary,
   }) {
@@ -76,8 +70,6 @@ class Coin {
       denomination: denomination,
       year: year,
       condition: condition,
-      buyPrice: buyPrice,
-      buyCurrency: buyCurrency,
       notes: notes,
       aiSummary: aiSummary,
       createdAt: now,
@@ -102,8 +94,6 @@ class Coin {
       'denomination': denomination,
       'year': year,
       'condition': condition,
-      'buy_price': buyPrice,
-      'buy_currency': buyCurrency,
       'notes_enc': notesEnc,
       'photo_path': photoPath,
       'ai_summary': aiSummary,
@@ -130,8 +120,6 @@ class Coin {
       denomination: (map['denomination'] as num).toDouble(),
       year: map['year'] as int?,
       condition: map['condition'] as String?,
-      buyPrice: (map['buy_price'] as num?)?.toDouble(),
-      buyCurrency: map['buy_currency'] as String?,
       notes: notes,
       notesUnreadable: notesUnreadable,
       photoPath: map['photo_path'] as String?,
@@ -149,8 +137,6 @@ class Coin {
     double? denomination,
     int? year,
     String? condition,
-    double? buyPrice,
-    String? buyCurrency,
     String? notes,
     String? photoPath,
     String? aiSummary,
@@ -166,8 +152,6 @@ class Coin {
       denomination: denomination ?? this.denomination,
       year: year ?? this.year,
       condition: condition ?? this.condition,
-      buyPrice: buyPrice ?? this.buyPrice,
-      buyCurrency: buyCurrency ?? this.buyCurrency,
       notes: notes ?? this.notes,
       photoPath: photoPath ?? this.photoPath,
       aiSummary: aiSummary ?? this.aiSummary,
