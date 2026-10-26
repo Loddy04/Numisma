@@ -21,10 +21,8 @@ class ExploreScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Jelajah'),
+          // Warna tab diatur tema global (tabBarTheme di theme.dart).
           bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
             tabs: [
               Tab(text: 'Peta'),
               Tab(text: 'Acara'),

@@ -8,7 +8,9 @@ import 'package:flutter/material.dart';
 import '../../services/account_remote.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
+import '../../theme.dart';
 import '../../widgets/app_logo.dart';
+import '../../widgets/double_rule.dart';
 import 'register_screen.dart';
 import 'splash_screen.dart';
 
@@ -144,13 +146,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Center(child: AppLogo(size: 80)),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Masuk ke Numisma',
+                  const Center(child: AppLogo(size: 88)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'NUMISMA',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: AppText.serif(
+                      size: 30,
+                      spacing: 6,
+                      weight: FontWeight.w700,
+                    ),
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Buku koleksi koin dan uang kertas',
+                    textAlign: TextAlign.center,
+                    style: AppText.serif(size: 15, italic: true),
+                  ),
+                  const SizedBox(height: 16),
+                  const DoubleRule(),
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _emailController,

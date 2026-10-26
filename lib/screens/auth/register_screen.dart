@@ -8,6 +8,8 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../theme.dart';
+import '../../widgets/double_rule.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -25,7 +27,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _authService = AuthService();
 
   bool _isLoading = false;
+  // Tombol mata di kolom Password dan Konfirmasi Password berdiri sendiri.
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -82,6 +86,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Text(
+                  'Koleksimu tersimpan aman dan bisa dipulihkan.',
+                  textAlign: TextAlign.center,
+                  style: AppText.serif(size: 15, italic: true),
+                ),
+                const SizedBox(height: 14),
+                const DoubleRule(),
+                const SizedBox(height: 20),
                 TextFormField(
                   controller: _usernameController,
                   maxLength: AuthService.maxNameLength,
@@ -141,10 +153,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _confirmPasswordController,
-                  obscureText: _obscurePassword,
-                  decoration: const InputDecoration(
+                  obscureText: _obscureConfirm,
+                  decoration: InputDecoration(
                     labelText: 'Konfirmasi Password',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
                   ),
                   validator: (value) {
                     if (value != _passwordController.text) {

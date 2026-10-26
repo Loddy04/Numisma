@@ -18,10 +18,8 @@ class GameScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Game'),
+          // Warna tab diatur tema global (tabBarTheme di theme.dart).
           bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
             tabs: [
               Tab(text: 'Tebak Asal Koin'),
               Tab(text: 'Coin Flip'),

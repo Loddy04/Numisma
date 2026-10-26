@@ -67,56 +67,142 @@ class AppText {
 class AppTheme {
   AppTheme._();
 
+  // Tema global bergaya buku koleksi: latar kertas krem, tinta, aksen cokelat
+  // tua logo, garis tipis, sudut lancip. Layar yang memakai widget Material
+  // bawaan (AppBar, tombol, kolom isian, kartu, dialog, Snackbar, tab) ikut
+  // berubah tanpa disentuh satu per satu.
   static ThemeData get light {
+    const line = BorderSide(color: Color(0x401E1A14)); // tinta 25%
+    const square = RoundedRectangleBorder();
+
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: AppColors.paper,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.bronze,
         primary: AppColors.bronze,
-        surface: AppColors.surface,
+        onPrimary: Colors.white,
+        surface: AppColors.paper,
+        onSurface: AppColors.ink,
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.bronze,
-        foregroundColor: Colors.white,
+      // AppBar menyatu dengan kertas: teks tinta serif, garis tipis di bawah
+      // (surfaceTintColor transparan supaya tidak berubah warna saat menggulir).
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.paper,
+        foregroundColor: AppColors.ink,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
+        shape: const Border(bottom: line),
+        titleTextStyle: AppText.serif(size: 22, weight: FontWeight.w600),
       ),
-      // Gaya kartu seragam dipakai di coin_card, coin_face, dsb.
-      cardTheme: CardThemeData(
-        color: AppColors.surface,
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      tabBarTheme: TabBarThemeData(
+        labelColor: AppColors.bronze,
+        unselectedLabelColor: AppColors.ink.withValues(alpha: 0.6),
+        indicatorColor: AppColors.bronze,
+        dividerColor: Colors.transparent,
+        labelStyle: AppText.serif(size: 16, weight: FontWeight.w600),
+        unselectedLabelStyle: AppText.serif(size: 16),
+      ),
+      // Kartu: isi transparan (warna kertas), satu garis tipis, sudut lancip.
+      cardTheme: const CardThemeData(
+        color: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(side: line),
+        margin: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.bronze,
           foregroundColor: Colors.white,
+          elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: square,
+          textStyle: AppText.serif(size: 16, weight: FontWeight.w600),
         ),
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.bronze,
+          foregroundColor: Colors.white,
+          shape: square,
         ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.bronze,
+          side: const BorderSide(color: AppColors.bronze),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          shape: square,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.bronze,
+          shape: square,
+        ),
+      ),
+      // Kolom isian: tanpa isi putih, garis tipis tinta, garis cokelat saat
+      // difokuskan, sudut lancip.
+      inputDecorationTheme: InputDecorationTheme(
+        filled: false,
+        border: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: line,
+        ),
+        enabledBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: line,
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: AppColors.bronze, width: 1.5),
+        ),
+        errorBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: AppColors.danger),
+        ),
+        focusedErrorBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: AppColors.danger, width: 1.5),
+        ),
+        labelStyle: AppText.serif(
+          size: 16,
+          color: AppColors.ink.withValues(alpha: 0.7),
+        ),
+        floatingLabelStyle: AppText.serif(size: 16, color: AppColors.bronze),
         contentPadding: const EdgeInsets.symmetric(
           vertical: 14,
           horizontal: 16,
         ),
       ),
+      // Dialog dan Snackbar (termasuk pesan hasil login) memakai kertas dan
+      // garis tipis juga.
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.paper,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(side: line),
+        titleTextStyle: AppText.serif(size: 20, weight: FontWeight.w700),
+        contentTextStyle: AppText.serif(size: 16),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.ink,
+        contentTextStyle: AppText.serif(size: 15, color: AppColors.paper),
+        behavior: SnackBarBehavior.floating,
+        shape: square,
+      ),
+      dividerTheme: DividerThemeData(
+        color: AppColors.ink.withValues(alpha: 0.2),
+        thickness: 1,
+      ),
       textTheme: const TextTheme(
         titleLarge: TextStyle(
           fontWeight: FontWeight.bold,
-          color: AppColors.textDark,
+          color: AppColors.ink,
         ),
-        bodyMedium: TextStyle(color: AppColors.textDark),
+        bodyMedium: TextStyle(color: AppColors.ink),
       ),
     );
   }
