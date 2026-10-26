@@ -8,14 +8,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../../models/coin.dart';
 import '../../models/event.dart';
 import '../../services/auth_service.dart';
 import '../../services/coin_repo.dart';
 import '../../services/event_repo.dart';
+import '../../services/rates_service.dart';
 import '../../services/notif_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme.dart';
-import '../../widgets/double_rule.dart';
 import '../auth/login_screen.dart';
 import '../chain/chain_screen.dart';
 import '../chat/chat_screen.dart';
@@ -62,6 +63,11 @@ class _HomeShellState extends State<HomeShell> {
   int _coinCount = 0;
   int _banknoteCount = 0;
   bool _statsLoaded = false;
+
+  // Nilai nominal setara seluruh koleksi dalam rupiah (null = belum ada atau
+  // kurs tidak tersedia). Dihitung di latar belakang dari cache kurs, tidak
+  // menahan layar.
+  CollectionValue? _value;
 
   // Ringkasan acara untuk Daftar Acara di Beranda: jumlah yang akan datang
   // dan yang paling dekat waktunya (null bila tidak ada).
@@ -122,6 +128,17 @@ class _HomeShellState extends State<HomeShell> {
         _banknoteCount = coins.length - _coinCount;
         _statsLoaded = true;
       });
+      unawaited(_loadValue(coins));
+    } catch (_) {}
+  }
+
+  // Nilai nominal setara dalam IDR. Gagal (offline tanpa cache) tidak fatal:
+  // kartu menampilkan tanda "–".
+  Future<void> _loadValue(List<Coin> coins) async {
+    try {
+      final value = await RatesService().valueOfCoins(coins, 'IDR');
+      if (!mounted) return;
+      setState(() => _value = value);
     } catch (_) {}
   }
 
@@ -167,7 +184,16 @@ class _HomeShellState extends State<HomeShell> {
     ).push(MaterialPageRoute(builder: (_) => page)).then((_) => _loadEvents());
   }
 
-  // Membuka halaman fitur dari menu Daftar Isi di Beranda.
+  // "+N lainnya": daftar semua acara (tab Acara di Jelajah).
+  void _openEventList() {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(builder: (_) => const ExploreScreen(initialTab: 1)),
+        )
+        .then((_) => _loadEvents());
+  }
+
+  // Membuka halaman fitur dari menu Jelajahi di Beranda.
   void _openFeature(String label) {
     if (label == 'Koleksi') {
       // Jumlah koleksi di kartu Beranda dimuat ulang setelah kembali.
@@ -269,13 +295,16 @@ class _HomeShellState extends State<HomeShell> {
       upcomingCount: _upcomingCount,
       nextEvent: _nextEvent,
       eventsLoaded: _eventsLoaded,
+      value: _value,
       onOpenEvents: _openEvents,
+      onOpenEventList: _openEventList,
       onRefresh: _loadPhoto,
       onOpen: _openFeature,
     );
   }
 
-  // Satu ikon bar. Yang aktif diwarnai cokelat tua logo, sisanya tinta pudar.
+  // Satu ikon bar. Yang aktif diberi latar krem lembut dengan ikon dan label
+  // cokelat tua logo, sisanya tinta pudar.
   Widget _navItem({
     required IconData icon,
     required String label,
@@ -284,106 +313,141 @@ class _HomeShellState extends State<HomeShell> {
   }) {
     final color = active
         ? AppColors.bronze
-        : AppColors.ink.withValues(alpha: 0.65);
+        : AppColors.ink.withValues(alpha: 0.6);
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 26),
-            const SizedBox(height: 2),
-            Text(label, style: AppText.serif(size: 14, color: color)),
-          ],
+      child: Center(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: active ? AppColors.tileActive : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // Bottom nav bergaya buku: latar kertas, garis ganda di tepi atas (putus di
-  // belakang tombol Scan), tombol Scan cokelat tua yang menonjol. Tombol
-  // sengaja tetap DI DALAM area widget supaya bisa ditekan (area di luar
-  // batas induk tidak menerima sentuhan). Ruang gestur sistem di bawah
-  // ditambahkan manual supaya warnanya ikut kertas.
+  // Bottom nav kapsul melayang: bar putih bersudut bulat dengan bayangan lembut
+  // dan tombol Scan bulat bergradasi cokelat di tengah, sedikit terangkat
+  // dengan cincin krem. Tombol tetap DI DALAM area widget supaya bisa ditekan
+  // (area di luar batas induk tidak menerima sentuhan).
   Widget _buildBottomNav() {
-    const barHeight = 72.0;
-    const scanSize = 64.0;
+    const barHeight = 64.0;
+    const scanSize = 60.0;
+    const lift = 14.0; // seberapa tinggi Scan naik dari tepi atas bar
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final totalHeight = barHeight + scanSize / 2 + bottomInset;
 
-    return SizedBox(
-      height: totalHeight,
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Container(
-            height: barHeight + bottomInset,
-            padding: EdgeInsets.only(top: 6, bottom: bottomInset),
-            color: AppColors.paper,
-            child: Row(
-              children: [
-                _navItem(
-                  icon: Icons.home_outlined,
-                  label: 'Beranda',
-                  active: _tab == _tabBeranda,
-                  onTap: () => setState(() => _tab = _tabBeranda),
-                ),
-                _navItem(
-                  icon: Icons.person_outline,
-                  label: 'Profil',
-                  active: _tab == _tabProfil,
-                  onTap: () => setState(() => _tab = _tabProfil),
-                ),
-                // Ruang kosong di tengah untuk tombol Scan.
-                const Expanded(child: SizedBox()),
-                _navItem(
-                  icon: Icons.rate_review_outlined,
-                  label: 'Saran',
-                  active: _tab == _tabSaran,
-                  onTap: () => setState(() => _tab = _tabSaran),
-                ),
-                _navItem(
-                  icon: Icons.logout,
-                  label: 'Keluar',
-                  onTap: _onLogout,
-                ),
-              ],
+    return Container(
+      // Wilayah di sekitar kapsul memakai warna dasar gradasi Beranda.
+      color: _tab == _tabBeranda ? AppColors.creamBottom : AppColors.paper,
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 10 + bottomInset),
+      child: SizedBox(
+        height: barHeight + lift,
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+              height: barHeight,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.heroDark.withValues(alpha: 0.14),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  _navItem(
+                    icon: Icons.home_outlined,
+                    label: 'Beranda',
+                    active: _tab == _tabBeranda,
+                    onTap: () => setState(() => _tab = _tabBeranda),
+                  ),
+                  _navItem(
+                    icon: Icons.person_outline,
+                    label: 'Profil',
+                    active: _tab == _tabProfil,
+                    onTap: () => setState(() => _tab = _tabProfil),
+                  ),
+                  // Ruang kosong di tengah untuk tombol Scan.
+                  const Expanded(child: SizedBox()),
+                  _navItem(
+                    icon: Icons.rate_review_outlined,
+                    label: 'Saran',
+                    active: _tab == _tabSaran,
+                    onTap: () => setState(() => _tab = _tabSaran),
+                  ),
+                  _navItem(
+                    icon: Icons.logout,
+                    label: 'Keluar',
+                    onTap: _onLogout,
+                  ),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            top: scanSize / 2,
-            left: 0,
-            right: 0,
-            child: const Row(
-              children: [
-                Expanded(child: DoubleRule()),
-                SizedBox(width: scanSize + 24),
-                Expanded(child: DoubleRule()),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 0,
-            child: Material(
-              color: AppColors.bronze,
-              shape: const CircleBorder(),
-              elevation: 4,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: _onScan,
-                child: const SizedBox(
-                  width: scanSize,
-                  height: scanSize,
-                  child: Icon(
-                    Icons.center_focus_strong_outlined,
-                    color: Colors.white,
-                    size: 32,
+            Positioned(
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.creamTop,
+                ),
+                child: Material(
+                  shape: const CircleBorder(),
+                  elevation: 4,
+                  clipBehavior: Clip.antiAlias,
+                  child: Ink(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.heroLight, AppColors.heroDark],
+                      ),
+                    ),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: _onScan,
+                      child: const SizedBox(
+                        width: scanSize - 8,
+                        height: scanSize - 8,
+                        child: Icon(
+                          Icons.center_focus_strong_outlined,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -392,14 +456,23 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final beranda = _tab == _tabBeranda;
     return Scaffold(
-      // Beranda memakai header sendiri di atas kertas krem (BerandaView), jadi
-      // tanpa AppBar. Tab lain masih memakai AppBar perunggu sampai
-      // gilirannya diganti.
-      backgroundColor: beranda ? AppColors.paper : null,
+      // Beranda memakai latar krem bergradasi dan header sendiri (BerandaView),
+      // jadi tanpa AppBar. Tab lain memakai AppBar tema global.
+      backgroundColor: beranda ? AppColors.creamBottom : null,
       appBar: beranda ? null : AppBar(title: Text(_titles[_tab])),
-      body: _buildBody(),
+      body: beranda
+          ? Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.creamTop, AppColors.creamBottom],
+                ),
+              ),
+              child: _buildBody(),
+            )
+          : _buildBody(),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 }
-

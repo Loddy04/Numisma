@@ -170,30 +170,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = _user;
     if (user == null) return;
 
-    final controller = TextEditingController(text: user.username);
+    // Isi dialog adalah widget sendiri yang memegang controller-nya: controller
+    // baru dibuang setelah dialog benar-benar hilang dari layar. Sebelumnya
+    // controller dibuang tepat setelah dialog ditutup, saat animasi keluar
+    // masih berjalan, sehingga layar menjadi merah.
     final newName = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Ganti nama tampilan'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: AuthService.maxNameLength,
-          decoration: const InputDecoration(labelText: 'Nama tampilan'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+      builder: (_) => _NameDialog(initial: user.username),
     );
-    controller.dispose();
     if (newName == null || newName.trim() == user.username) return;
 
     try {
@@ -323,6 +307,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ? _toggleBiometric
                 : null,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+// Dialog ganti nama tampilan. Menjadi StatefulWidget supaya
+// TextEditingController dibuat dan dibuang bersama dialognya.
+class _NameDialog extends StatefulWidget {
+  final String initial;
+  const _NameDialog({required this.initial});
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Ganti nama tampilan'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: AuthService.maxNameLength,
+        decoration: const InputDecoration(labelText: 'Nama tampilan'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Batal'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Simpan'),
         ),
       ],
     );

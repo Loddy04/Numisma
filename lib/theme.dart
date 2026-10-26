@@ -26,6 +26,14 @@ class AppColors {
   static const paper = Color(0xFFF1E6D0);
   static const ink = Color(0xFF1E1A14);
   static const maroon = Color(0xFF7A2E24);
+
+  // Warna gaya "elegan modern" (Beranda): latar krem bergradasi halus, kartu
+  // hero gradasi cokelat, dan latar ikon nav yang aktif.
+  static const creamTop = Color(0xFFFBF5EA);
+  static const creamBottom = Color(0xFFF2E6D2);
+  static const heroDark = Color(0xFF45301F);
+  static const heroLight = Color(0xFF9A6B3A);
+  static const tileActive = Color(0xFFEDE0CB);
 }
 
 // Gaya teks bergaya buku lama memakai font bawaan Android (tanpa berkas
