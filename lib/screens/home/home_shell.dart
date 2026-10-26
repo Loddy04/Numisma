@@ -17,6 +17,7 @@ import '../../services/rates_service.dart';
 import '../../services/notif_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../auth/login_screen.dart';
 import '../chain/chain_screen.dart';
 import '../chat/chat_screen.dart';
@@ -242,24 +243,15 @@ class _HomeShellState extends State<HomeShell> {
   // Keluar tidak punya halaman: tampilkan dialog, dan indeks tab aktif
   // tidak diubah supaya kalau dibatalkan pengguna tetap di tab semula.
   Future<void> _onLogout() async {
-    final yakin = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keluar'),
-        content: const Text('Yakin ingin keluar dari akun ini?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Keluar'),
-          ),
-        ],
-      ),
+    final yakin = await confirmDialog(
+      context,
+      title: 'Keluar dari Numisma?',
+      message:
+          'Sesi akan dihapus dan pengingat akunmu dibatalkan. Koleksimu tetap '
+          'tersimpan dan muncul lagi saat kamu masuk.',
+      confirmLabel: 'Keluar',
     );
-    if (yakin != true) return;
+    if (!yakin) return;
 
     await _authService.logout();
     if (!mounted) return;

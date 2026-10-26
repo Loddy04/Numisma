@@ -4,13 +4,14 @@
 // di Profil dan HP-nya mendukung.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/account_remote.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../../theme.dart';
-import '../../widgets/app_logo.dart';
-import '../../widgets/double_rule.dart';
+import '../../widgets/gradient_button.dart';
+import 'auth_widgets.dart';
 import 'register_screen.dart';
 import 'splash_screen.dart';
 
@@ -133,118 +134,171 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+
+  void _openRegister() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const RegisterScreen()));
+  }
+
+  // Kepala halaman bergradasi di atas, lembar krem bersudut bulat di bawahnya
+  // yang menimpa kepala sebesar [overlap]. Seluruh halaman bisa digulir (HP
+  // kecil atau keyboard terbuka); lembar diberi tinggi minimum supaya selalu
+  // sampai ke dasar layar.
   @override
   Widget build(BuildContext context) {
+    const heroHeight = 300.0;
+    const overlap = 32.0;
+    final media = MediaQuery.of(context);
+
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      backgroundColor: AppColors.creamBottom,
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: SingleChildScrollView(
+          child: Stack(
+            children: [
+              const AuthHero(height: heroHeight),
+              Column(
                 children: [
-                  const Center(child: AppLogo(size: 88)),
-                  const SizedBox(height: 12),
-                  Text(
-                    'NUMISMA',
-                    textAlign: TextAlign.center,
-                    style: AppText.serif(
-                      size: 30,
-                      spacing: 6,
-                      weight: FontWeight.w700,
+                  const SizedBox(height: heroHeight - overlap),
+                  Container(
+                    width: double.infinity,
+                    constraints: BoxConstraints(
+                      minHeight: media.size.height - (heroHeight - overlap),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Buku koleksi koin dan uang kertas',
-                    textAlign: TextAlign.center,
-                    style: AppText.serif(size: 15, italic: true),
-                  ),
-                  const SizedBox(height: 16),
-                  const DoubleRule(),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                    padding: EdgeInsets.fromLTRB(
+                      24,
+                      28,
+                      24,
+                      24 + media.padding.bottom,
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Email tidak boleh kosong';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () => setState(
-                          () => _obscurePassword = !_obscurePassword,
-                        ),
+                    decoration: const BoxDecoration(
+                      gradient: AppGradients.page,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(32),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Password tidak boleh kosong';
-                      }
-                      return null;
-                    },
+                    child: _form(),
                   ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Masuk'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                    child: const Text('Belum punya akun? Daftar di sini'),
-                  ),
-                  if (_canBiometric) ...[
-                    const SizedBox(height: 4),
-                    OutlinedButton.icon(
-                      onPressed: _isLoading ? null : _handleBiometricLogin,
-                      icon: const Icon(Icons.fingerprint),
-                      label: const Text('Masuk dengan sidik jari'),
-                    ),
-                  ],
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _form() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Masuk',
+            style: AppText.serif(size: 32, weight: FontWeight.w700),
+          ),
+          const SizedBox(height: 20),
+          const FieldLabel('Email'),
+          TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: authInput(
+              hint: 'kamu@email.com',
+              icon: Icons.mail_outline,
+            ),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Email tidak boleh kosong';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          const FieldLabel('Password'),
+          TextFormField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: authInput(
+              hint: 'Password',
+              icon: Icons.lock_outline,
+              suffix: IconButton(
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Password tidak boleh kosong';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 24),
+          GradientButton(
+            label: 'Masuk',
+            loading: _isLoading,
+            onPressed: _isLoading ? null : _handleLogin,
+          ),
+          if (_canBiometric) ...[
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                const Expanded(child: Divider()),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Text(
+                    'atau',
+                    style: TextStyle(
+                      color: AppColors.ink.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+                const Expanded(child: Divider()),
+              ],
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: _isLoading ? null : _handleBiometricLogin,
+              icon: const Icon(Icons.fingerprint),
+              label: const Text('Masuk dengan sidik jari'),
+            ),
+          ],
+          const SizedBox(height: 32),
+          Center(
+            child: InkWell(
+              onTap: _isLoading ? null : _openRegister,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text.rich(
+                  TextSpan(
+                    text: 'Belum punya akun? ',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppColors.ink.withValues(alpha: 0.65),
+                    ),
+                    children: const [
+                      TextSpan(
+                        text: 'Daftar',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.bronze,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
