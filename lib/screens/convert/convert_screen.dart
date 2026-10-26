@@ -1,276 +1,365 @@
 // screens/convert/convert_screen.dart
-// Menu Konversi (NUMISMA_GUIDE Bagian 7.7). Tiga tab: Kurs, Nilai Koleksi
-// (collection_value_tab.dart), dan Jam Dunia (world_clock_tab.dart). Layar tidak memanggil
-// HTTP/database langsung: semuanya lewat RatesService (aturan Bagian 4.1).
-
-import 'dart:async';
+// Menu Konversi (NUMISMA_GUIDE Bagian 7.7): satu layar yang menggabungkan
+// Kurs dan Nilai Koleksi. Pengguna memilih mata uang tujuan, lalu memilih satu
+// atau beberapa koin di daftar koleksinya; tiap koin menampilkan hasil
+// konversinya, dan koin yang dipilih dijumlahkan. Total seluruh koleksi
+// didapat dengan "Pilih semua", jadi tidak perlu perhitungan terpisah.
+//
+// Ini NILAI NOMINAL SETARA berdasarkan kurs hari itu, bukan harga pasar
+// kolektor (Bagian 1.6). Layar tidak memanggil HTTP/database langsung:
+// semuanya lewat RatesService dan CoinRepo (aturan Bagian 4.1).
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/format_util.dart';
+import '../../models/coin.dart';
+import '../../services/auth_service.dart';
+import '../../services/coin_repo.dart';
 import '../../services/rates_service.dart';
 import '../../theme.dart';
 import '../../widgets/currency_picker.dart';
-import 'collection_value_tab.dart';
-import 'world_clock_tab.dart';
 
-class ConvertScreen extends StatelessWidget {
+class ConvertScreen extends StatefulWidget {
   const ConvertScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Konversi'),
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(text: 'Kurs'),
-              Tab(text: 'Nilai Koleksi'),
-              Tab(text: 'Jam Dunia'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
-          children: [_KursTab(), CollectionValueTab(), WorldClockTab()],
-        ),
-      ),
-    );
-  }
+  State<ConvertScreen> createState() => _ConvertScreenState();
 }
 
-class _KursTab extends StatefulWidget {
-  const _KursTab();
+class _ConvertScreenState extends State<ConvertScreen> {
+  final _auth = AuthService();
+  final _repo = CoinRepo();
+  final _rates = RatesService();
 
-  @override
-  State<_KursTab> createState() => _KursTabState();
-}
+  // Mata uang tujuan konversi.
+  String _target = 'IDR';
 
-class _KursTabState extends State<_KursTab> with AutomaticKeepAliveClientMixin {
-  final _service = RatesService();
-  final _amountController = TextEditingController(text: '1');
-  // Kunci ke pemilih supaya tombol tukar bisa mengubah nilainya dari luar.
-  final _fromKey = GlobalKey<FormFieldState<String>>();
-  final _toKey = GlobalKey<FormFieldState<String>>();
-
-  String _from = 'USD';
-  String _to = 'IDR';
-
-  Timer? _debounce;
-  // Nomor permintaan: hasil yang datang terlambat dari ketikan lama
-  // dibuang supaya angka di layar tidak "melompat" mundur.
-  int _requestNo = 0;
-
-  bool _loading = false;
-  double? _result;
-  RateInfo? _info;
+  List<Coin> _coins = [];
+  bool _loading = true;
   String? _error;
 
-  // Tab tetap hidup saat berpindah ke Jam Dunia, jadi isian tidak hilang.
-  @override
-  bool get wantKeepAlive => true;
+  // kode mata uang koin -> kurs ke mata uang tujuan (null = tidak tersedia).
+  Map<String, RateInfo?> _rateOf = {};
+  bool _ratesLoading = false;
+
+  // id koin yang dipilih di daftar.
+  final Set<String> _selected = {};
+
+  // Nomor pemuatan: hasil lama yang datang terlambat dibuang, supaya angka
+  // tidak "melompat" mundur saat pengguna mengganti mata uang dengan cepat.
+  int _ratesNo = 0;
 
   @override
   void initState() {
     super.initState();
-    _recalculate();
+    _load();
   }
 
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _amountController.dispose();
-    super.dispose();
-  }
-
-  // Menerima koma sebagai desimal (kebiasaan pengetikan Indonesia).
-  double? _parseAmount() {
-    final text = _amountController.text.trim().replaceAll(',', '.');
-    return double.tryParse(text);
-  }
-
-  // Tertunda 400 ms supaya tidak memanggil API di setiap huruf yang diketik.
-  void _scheduleRecalculate() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), _recalculate);
-  }
-
-  // `force` = tarik-untuk-menyegarkan: kurs diambil ulang dari API.
-  Future<void> _recalculate({bool force = false}) async {
-    final amount = _parseAmount();
-    if (amount == null || amount < 0) {
-      setState(() {
-        _result = null;
-        _info = null;
-        _error = _amountController.text.trim().isEmpty
-            ? null
-            : 'Jumlah harus berupa angka.';
-      });
-      return;
-    }
-
-    final myRequest = ++_requestNo;
+  // `force` = tarik-untuk-menyegarkan: kurs diambil ulang dari API, dan
+  // spinner bawaan RefreshIndicator sudah cukup (isi layar tidak diganti).
+  Future<void> _load({bool force = false}) async {
     setState(() {
-      _loading = true;
+      _loading = !force;
       _error = null;
     });
-
     try {
-      final info = await _service.getRateInfo(_from, _to, forceRefresh: force);
-      if (!mounted || myRequest != _requestNo) return;
+      final user = await _auth.currentUser();
+      if (user == null) throw Exception('Belum login');
+      final coins = await _repo.list(user.id!);
+      if (!mounted) return;
       setState(() {
-        _info = info;
-        _result = amount * info.rate;
+        _coins = coins;
         _loading = false;
+        // Buang pilihan untuk koin yang sudah tidak ada.
+        final ids = coins.map((c) => c.id).toSet();
+        _selected.removeWhere((id) => !ids.contains(id));
       });
-    } on RateUnavailable catch (e) {
-      if (!mounted || myRequest != _requestNo) return;
+      await _loadRates(force: force);
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
-        _result = null;
-        _info = null;
-        _error = e.message;
+        _error = 'Gagal memuat koleksi, coba lagi.';
         _loading = false;
       });
     }
   }
 
-  void _swap() {
-    final oldFrom = _from;
-    _fromKey.currentState?.didChange(_to);
-    _toKey.currentState?.didChange(oldFrom);
+  // Kurs dari tiap mata uang koin ke mata uang tujuan. Satu permintaan per
+  // mata uang (bukan per koin): 30 koin JPY cukup satu kali minta kurs.
+  Future<void> _loadRates({bool force = false}) async {
+    final codes = {for (final c in _coins) c.currencyCode};
+    if (codes.isEmpty) {
+      setState(() => _rateOf = {});
+      return;
+    }
+    final no = ++_ratesNo;
+    setState(() => _ratesLoading = true);
+    final entries = await Future.wait(
+      codes.map((code) async {
+        try {
+          final info = await _rates.getRateInfo(
+            code,
+            _target,
+            forceRefresh: force,
+          );
+          return MapEntry<String, RateInfo?>(code, info);
+        } on RateUnavailable {
+          return MapEntry<String, RateInfo?>(code, null);
+        }
+      }),
+    );
+    if (!mounted || no != _ratesNo) return;
     setState(() {
-      _from = _to;
-      _to = oldFrom;
+      _rateOf = Map.fromEntries(entries);
+      _ratesLoading = false;
     });
-    _recalculate();
+  }
+
+  // Nilai satu koin dalam mata uang tujuan; null bila kursnya tidak ada.
+  double? _valueOf(Coin c) {
+    final info = _rateOf[c.currencyCode];
+    return info == null ? null : c.denomination * info.rate;
+  }
+
+  void _toggle(String id) {
+    setState(() {
+      if (!_selected.add(id)) _selected.remove(id);
+    });
+  }
+
+  void _toggleAll() {
+    setState(() {
+      if (_selected.length == _coins.length) {
+        _selected.clear();
+      } else {
+        _selected
+          ..clear()
+          ..addAll(_coins.map((c) => c.id));
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // wajib untuk AutomaticKeepAliveClientMixin
-    return RefreshIndicator(
-      onRefresh: () => _recalculate(force: true),
-      child: ListView(
-        // Selalu bisa ditarik, walau isinya muat di satu layar.
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-            ],
-            decoration: const InputDecoration(labelText: 'Jumlah'),
-            onChanged: (_) => _scheduleRecalculate(),
-          ),
-          const SizedBox(height: 12),
-          CurrencyPickerField(
-            key: _fromKey,
-            label: 'Dari',
-            initialCode: _from,
-            required: true,
-            onChanged: (code) {
-              if (code == null) return;
-              setState(() => _from = code);
-              _recalculate();
-            },
-          ),
-          Center(
-            child: TextButton.icon(
-              onPressed: _swap,
-              icon: const Icon(Icons.swap_vert),
-              label: const Text('Tukar'),
-            ),
-          ),
-          CurrencyPickerField(
-            key: _toKey,
-            label: 'Ke',
-            initialCode: _to,
-            required: true,
-            onChanged: (code) {
-              if (code == null) return;
-              setState(() => _to = code);
-              _recalculate();
-            },
-          ),
-          const SizedBox(height: 20),
-          _buildResult(),
-          const SizedBox(height: 12),
-          const Text(
-            'Kurs referensi dari Frankfurter, bukan harga jual-beli. '
-            'Diperbarui pada hari kerja.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Konversi')),
+      body: RefreshIndicator(
+        onRefresh: () => _load(force: true),
+        child: ListView(
+          // Selalu bisa ditarik, walau isinya pendek.
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          children: _buildBody(),
+        ),
       ),
     );
   }
 
-  Widget _buildResult() {
+  List<Widget> _buildBody() {
+    if (_loading) {
+      return const [Center(child: CircularProgressIndicator())];
+    }
     if (_error != null) {
-      return Card(
-        margin: EdgeInsets.zero,
+      return [Text(_error!, style: const TextStyle(color: AppColors.danger))];
+    }
+    if (_coins.isEmpty) {
+      return const [
+        Text('Koleksimu masih kosong. Tambahkan koin di menu Koleksi.'),
+      ];
+    }
+    return [
+      const Text(
+        'Konversi koleksi',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textDark,
+        ),
+      ),
+      const SizedBox(height: 2),
+      const Text(
+        'Pilih mata uang tujuan, lalu pilih koin yang ingin dilihat nilainya. '
+        'Tekan "Pilih semua" untuk total seluruh koleksi.',
+        style: TextStyle(fontSize: 12, color: Colors.grey),
+      ),
+      const SizedBox(height: 12),
+      CurrencyPickerField(
+        label: 'Konversi ke',
+        initialCode: _target,
+        required: true,
+        onChanged: (code) {
+          if (code == null) return;
+          _target = code;
+          _loadRates();
+        },
+      ),
+      const SizedBox(height: 8),
+      _summaryCard(),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              _selected.isEmpty
+                  ? '${_coins.length} item'
+                  : '${_selected.length} dari ${_coins.length} dipilih',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ),
+          if (_ratesLoading)
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          TextButton(
+            onPressed: _toggleAll,
+            child: Text(
+              _selected.length == _coins.length
+                  ? 'Hapus pilihan'
+                  : 'Pilih semua',
+            ),
+          ),
+        ],
+      ),
+      for (final c in _coins) _coinRow(c),
+      const SizedBox(height: 16),
+      const Text(
+        'Nilai nominal setara berdasarkan kurs referensi Frankfurter, bukan '
+        'harga pasar kolektor. Diperbarui pada hari kerja.',
+        style: TextStyle(fontSize: 12, color: Colors.grey),
+      ),
+    ];
+  }
+
+  // Jumlah koin yang dipilih dalam mata uang tujuan, beserta keterangan kurs.
+  Widget _summaryCard() {
+    if (_selected.isEmpty) {
+      return const Card(
+        margin: EdgeInsets.only(bottom: 8),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(_error!, style: const TextStyle(color: AppColors.danger)),
+          padding: EdgeInsets.all(12),
+          child: Text(
+            'Belum ada koin dipilih.',
+            style: TextStyle(fontSize: 13, color: Colors.grey),
+          ),
         ),
       );
     }
-    final result = _result;
-    final info = _info;
-    if (result == null || info == null) {
-      return _loading
-          ? const Center(child: CircularProgressIndicator())
-          : const SizedBox.shrink();
+    final chosen = _coins.where((c) => _selected.contains(c.id)).toList();
+    var sum = 0.0;
+    var counted = 0;
+    String? oldest;
+    var anyFromCache = false;
+    for (final c in chosen) {
+      final v = _valueOf(c);
+      if (v == null) continue;
+      sum += v;
+      counted++;
+      final info = _rateOf[c.currencyCode]!;
+      anyFromCache = anyFromCache || info.fromCache;
+      final date = info.rateDate;
+      // Tanggal ISO bisa dibandingkan sebagai teks; yang terlama dipakai
+      // (jujur: totalnya sesegar kurs yang tertua).
+      if (date != null && (oldest == null || date.compareTo(oldest) < 0)) {
+        oldest = date;
+      }
     }
-
+    final skipped = chosen.length - counted;
     return Card(
-      margin: EdgeInsets.zero,
+      margin: const EdgeInsets.only(bottom: 8),
+      color: AppColors.latte,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${formatNumber(result)} $_to',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.bronze,
-                    ),
-                  ),
-                ),
-                if (_loading)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text('1 $_from = ${formatNumber(info.rate)} $_to'),
-            const SizedBox(height: 4),
             Text(
-              info.rateDate == null
-                  ? 'Mata uang sama, tanpa kurs.'
-                  : 'Tanggal kurs: ${formatRateDate(info.rateDate!)}'
-                        '${info.fromCache ? ' (dari cache, internet tidak terjangkau)' : ''}',
-              style: TextStyle(
-                fontSize: 12,
-                color: info.fromCache ? AppColors.danger : Colors.grey,
+              'Total terpilih (${chosen.length} item)',
+              style: const TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              // Tidak ada satu pun kurs yang didapat: jangan tampilkan "0".
+              counted == 0
+                  ? (_ratesLoading ? 'Menghitung…' : 'Tidak tersedia')
+                  : '≈ ${formatNumber(sum)} $_target',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.bronze,
               ),
             ),
+            if (skipped > 0)
+              Text(
+                '$skipped item tidak dihitung karena kursnya tidak tersedia.',
+                style: const TextStyle(fontSize: 12, color: AppColors.danger),
+              ),
+            if (oldest != null)
+              Text(
+                'Tanggal kurs: ${formatRateDate(oldest)}'
+                '${anyFromCache ? ' (sebagian dari cache, internet tidak terjangkau)' : ''}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: anyFromCache ? AppColors.danger : Colors.grey,
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _coinRow(Coin c) {
+    final value = _valueOf(c);
+    final selected = _selected.contains(c.id);
+    final detail = [
+      c.country,
+      if (c.year != null) '${c.year}',
+      c.type == 'banknote' ? 'uang kertas' : 'koin',
+    ].join(' · ');
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _toggle(c.id),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            children: [
+              Checkbox(value: selected, onChanged: (_) => _toggle(c.id)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${c.denominationLabel} ${c.currencyCode}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      detail,
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                value == null
+                    ? (_ratesLoading ? '…' : '—')
+                    : '≈ ${formatNumber(value)} $_target',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: value == null ? Colors.grey : AppColors.bronze,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
         ),
       ),
     );
