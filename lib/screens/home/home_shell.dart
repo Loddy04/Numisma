@@ -8,8 +8,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../../models/event.dart';
 import '../../services/auth_service.dart';
 import '../../services/coin_repo.dart';
+import '../../services/event_repo.dart';
 import '../../services/notif_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme.dart';
@@ -19,6 +21,7 @@ import '../chain/chain_screen.dart';
 import '../chat/chat_screen.dart';
 import '../collection/collection_screen.dart';
 import '../convert/convert_screen.dart';
+import '../explore/event_detail_screen.dart';
 import '../explore/explore_screen.dart';
 import '../feedback/feedback_screen.dart';
 import '../game/game_screen.dart';
@@ -60,6 +63,12 @@ class _HomeShellState extends State<HomeShell> {
   int _banknoteCount = 0;
   bool _statsLoaded = false;
 
+  // Ringkasan acara untuk Daftar Acara di Beranda: jumlah yang akan datang
+  // dan yang paling dekat waktunya (null bila tidak ada).
+  int _upcomingCount = 0;
+  Event? _nextEvent;
+  bool _eventsLoaded = false;
+
   // Mencoba mengunggah perubahan yang tertunda tiap menit. Tanpa paket
   // pemantau koneksi: bila tadi offline, perubahan terkirim paling lambat
   // semenit setelah internet kembali. Bila tidak ada yang tertunda, tidak
@@ -94,6 +103,7 @@ class _HomeShellState extends State<HomeShell> {
       // jadwal pengingat selesai dimuat ulang.
       if (user != null) await _syncReminders(user.id!);
       await _loadStats();
+      await _loadEvents();
     } catch (_) {
       // Gagal memuat foto tidak fatal: ikon orang bawaan tetap tampil.
     }
@@ -115,6 +125,25 @@ class _HomeShellState extends State<HomeShell> {
     } catch (_) {}
   }
 
+  // Acara yang belum mulai milik akun ini, diurut dari yang paling awal.
+  // Gagal tidak fatal: bagian acara tampil seperti belum ada acara.
+  Future<void> _loadEvents() async {
+    try {
+      final user = await _authService.currentUser();
+      if (user == null) return;
+      final all = await EventRepo().list(user.id!);
+      final now = DateTime.now().toUtc();
+      final upcoming = all.where((e) => e.startUtc.isAfter(now)).toList()
+        ..sort((a, b) => a.startUtc.compareTo(b.startUtc));
+      if (!mounted) return;
+      setState(() {
+        _upcomingCount = upcoming.length;
+        _nextEvent = upcoming.isEmpty ? null : upcoming.first;
+        _eventsLoaded = true;
+      });
+    } catch (_) {}
+  }
+
   // Akun yang login sudah diketahui di sini: jadwalkan ulang pengingat AKUN
   // INI (force-stop membatalkan alarm sistem) dan batalkan alarm milik akun
   // lain. Alarm Android per perangkat, sedangkan acara per akun.
@@ -124,6 +153,18 @@ class _HomeShellState extends State<HomeShell> {
     } catch (_) {
       // Gagal menjadwalkan ulang tidak boleh mengganggu layar utama.
     }
+  }
+
+  // Daftar Acara di Beranda: acara terdekat membuka detailnya, bila kosong
+  // membuka tab Acara di Jelajah. Daftar dimuat ulang setelah kembali.
+  void _openEvents() {
+    final next = _nextEvent;
+    final page = next == null
+        ? const ExploreScreen(initialTab: 1)
+        : EventDetailScreen(eventId: next.id);
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => page)).then((_) => _loadEvents());
   }
 
   // Membuka halaman fitur dari menu Daftar Isi di Beranda.
@@ -152,7 +193,9 @@ class _HomeShellState extends State<HomeShell> {
     } else if (label == 'Jelajah') {
       Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => const ExploreScreen()));
+      ).push(MaterialPageRoute(builder: (_) => const ExploreScreen())).then(
+        (_) => _loadEvents(),
+      );
     }
   }
 
@@ -223,12 +266,16 @@ class _HomeShellState extends State<HomeShell> {
       coinCount: _coinCount,
       banknoteCount: _banknoteCount,
       statsLoaded: _statsLoaded,
+      upcomingCount: _upcomingCount,
+      nextEvent: _nextEvent,
+      eventsLoaded: _eventsLoaded,
+      onOpenEvents: _openEvents,
       onRefresh: _loadPhoto,
       onOpen: _openFeature,
     );
   }
 
-  // Satu ikon bar. Yang aktif diwarnai merah marun, sisanya tinta pudar.
+  // Satu ikon bar. Yang aktif diwarnai cokelat tua logo, sisanya tinta pudar.
   Widget _navItem({
     required IconData icon,
     required String label,
@@ -236,7 +283,7 @@ class _HomeShellState extends State<HomeShell> {
     bool active = false,
   }) {
     final color = active
-        ? AppColors.maroon
+        ? AppColors.bronze
         : AppColors.ink.withValues(alpha: 0.65);
     return Expanded(
       child: InkWell(
@@ -254,7 +301,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   // Bottom nav bergaya buku: latar kertas, garis ganda di tepi atas (putus di
-  // belakang tombol Scan), tombol Scan merah marun yang menonjol. Tombol
+  // belakang tombol Scan), tombol Scan cokelat tua yang menonjol. Tombol
   // sengaja tetap DI DALAM area widget supaya bisa ditekan (area di luar
   // batas induk tidak menerima sentuhan). Ruang gestur sistem di bawah
   // ditambahkan manual supaya warnanya ikut kertas.
@@ -318,7 +365,7 @@ class _HomeShellState extends State<HomeShell> {
           Positioned(
             top: 0,
             child: Material(
-              color: AppColors.maroon,
+              color: AppColors.bronze,
               shape: const CircleBorder(),
               elevation: 4,
               child: InkWell(

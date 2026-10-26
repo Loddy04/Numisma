@@ -13,4 +13,15 @@ void main() {
     expect(formatDuration(const Duration(days: 2)), '2 hari');
     expect(formatDuration(Duration.zero), '0 menit');
   });
+
+  test('formatCountdown memakai satu satuan dibulatkan ke bawah', () {
+    expect(formatCountdown(const Duration(seconds: 30)), 'sebentar lagi');
+    expect(formatCountdown(const Duration(minutes: 45)), '45 menit lagi');
+    expect(formatCountdown(const Duration(minutes: 150)), '2 jam lagi');
+    expect(
+      formatCountdown(const Duration(hours: 23, minutes: 59)),
+      '23 jam lagi',
+    );
+    expect(formatCountdown(const Duration(hours: 49)), '2 hari lagi');
+  });
 }

@@ -1,5 +1,5 @@
 # Progres Numisma — Hari 5
-**Jumat 23 sampai Minggu 25 Oktober 2026 — status: login email, sinkron (teks dan foto), Jelajah, redesain Beranda, dan BLOCKCHAIN Sepolia (penjangkaran blok terakhir) selesai; transaksi pertama terbukti di jaringan. Konversi gabungan, penghapusan Jam Dunia dari Konversi, rombak UI global, dan uji penuh BELUM dikerjakan (rencananya di bagian 11). TENGGAT DIPERPANJANG sampai Selasa 27 Oktober 2026.**
+**Jumat 23 sampai Senin 26 Oktober 2026 — status: login email, sinkron (teks dan foto), Jelajah, redesain Beranda, BLOCKCHAIN Sepolia (penjangkaran blok terakhir; transaksi pertama terbukti di jaringan), dan KONVERSI GABUNGAN (Jam Dunia dipindah ke Jelajah) selesai. Belum: perbaikan kecil catatan terenkripsi, rombak UI global (Beranda berwarna sedang berjalan, belum di-commit), uji formal T01–T38, build release, laporan, PPT (rencananya di bagian 11). TENGGAT DIPERPANJANG sampai Selasa 27 Oktober 2026.**
 
 > Dokumen ini merekam apa yang dikerjakan di Hari 5, keputusan, temuan, dan **rencana rinci blockchain** supaya (a) sesi Claude berikutnya paham konteks tanpa tanya ulang, dan (b) materinya siap dipakai untuk Bagian 6 "Implementasi" laporan. Format sama dengan `progres-hari-4.md`. Acuan: `NUMISMA_GUIDE_0.7.md` (Guide belum diperbarui untuk perubahan Hari 5; lihat bagian 9).
 
@@ -55,6 +55,8 @@ Semua tabel dan kolom SQLite terpakai kode (tidak ada yang dibuang). Di Supabase
 Kertas krem (`AppColors.paper`), tinta, merah marun, garis ganda (`widgets/double_rule.dart`), kotak ringkasan tiga kolom (Koin, Uang Kertas, Jumlah; tanpa nilai uang), "Daftar Isi" 1–6 (Koleksi, Konversi, Tanya Numisma, Jelajah, Permainan, Jejak Catatan), foto profil di kiri header (tidak bisa diketuk) dan "Halo, nama" di kanan, ikon Profil biasa di bottom nav, tombol Scan merah marun. Font bawaan Android (`serif`, `monospace`) lewat `AppText` di `theme.dart`; tidak ada font yang diunduh. Berkas: `screens/home/beranda_view.dart`, `theme.dart` (hanya menambah). Hanya Beranda dan bottom nav yang bertema baru; layar lain masih tema perunggu. Cara kembali ke tampilan lama: titik kembali commit `925cfbb` (lihat memori `ui-beranda-lama-cara-kembali`).
 Bug yang ditemukan dan diperbaiki: `DoubleRule` awalnya tidak tampil (garis berlebar nol di dalam `Column`; perlu `crossAxisAlignment: stretch`).
 
+**Pembaruan 26 Okt (belum di-commit):** `screens/home/beranda_view.dart` terdeteksi sudah diubah lagi ke versi **berwarna** (spanduk gradasi dengan foto profil dan nama besar, tiga kartu ringkasan berwarna, "Daftar Isi" berupa kartu menu dua kolom dengan warna tiap fitur: Koleksi, Konversi, Tanya Numisma, Jelajah, Permainan, Jejak Catatan; `DoubleRule` tidak dipakai lagi di berkas itu). Perubahan ini bukan dari sesi dokumen ini dan merupakan bagian dari rombak UI (9.3); perlu diperiksa di HP dan di-commit oleh pemilik proyek. Titik kembali ke gaya buku bernuansa krem: commit `06c89a9`.
+
 ## 7. Masalah teknis yang ditemukan dan solusinya
 
 - **Bentrok nama `User`** antara model kita dan Supabase Auth: `import 'package:supabase_flutter/supabase_flutter.dart' hide User;` di `sync_service.dart`.
@@ -67,19 +69,19 @@ Bug yang ditemukan dan diperbaiki: `DoubleRule` awalnya tidak tampil (garis berl
 
 ## 8. Daftar commit Hari 5 (urut lama ke baru)
 
-`340589a` Guide 0.7 + skema Supabase · `dedc378` login email + akun online + DB v4 · `0ba4147` sync_service · `925cfbb` sinkron otomatis + layar Sinkron · `06c89a9` redesain Beranda · `0eedf07` dasar LBS · `214d2f8` layar Jelajah · `ac9c2a3` LBS lengkap · `2eb0e49` sinkron foto ke Storage · `bed6baf` persiapan blockchain (web3dart, konfigurasi `ETH_*`) · (commit blockchain B2–B4: penjangkaran, DB v5, kartu di Jejak Catatan; hash belum dicatat). `progres-hari-5.md` sengaja tidak di-commit.
+`340589a` Guide 0.7 + skema Supabase · `dedc378` login email + akun online + DB v4 · `0ba4147` sync_service · `925cfbb` sinkron otomatis + layar Sinkron · `06c89a9` redesain Beranda · `0eedf07` dasar LBS · `214d2f8` layar Jelajah · `ac9c2a3` LBS lengkap · `2eb0e49` sinkron foto ke Storage · `bed6baf` persiapan blockchain (web3dart, konfigurasi `ETH_*`) · `971f247` jangkarkan Jejak Catatan ke blockchain Sepolia (penjangkaran, DB v5, kartu di Jejak Catatan) · `c5bd56e` Konversi gabungan dan hapus Jam Dunia dari Konversi. Belum di-commit saat ini: `beranda_view.dart` versi berwarna. `progres-hari-5.md` sengaja tidak di-commit.
 
 ---
 
-## 9. PERUBAHAN PERMINTAAN SETELAH FITUR LENGKAP (blockchain SUDAH dikerjakan, lihat 9.5; sisanya belum)
+## 9. PERUBAHAN PERMINTAAN SETELAH FITUR LENGKAP (blockchain 9.5, Konversi 9.1, dan Jam Dunia 9.2 SUDAH dikerjakan; rombak UI 9.3 sedang berjalan)
 
 Urutan prioritas yang disepakati: **blockchain > Konversi gabungan > hapus Jam Dunia dari Konversi > rombak UI (paling akhir, bila ada waktu)**. Lalu uji penuh dan build final. **Tenggat awalnya Minggu 25 Oktober, kini diperpanjang sampai Selasa 27 Oktober 2026**; hari ini (25 Oktober) tetap dianggap batas aplikasi selesai secara santai, lalu sisa waktu untuk uji penuh, laporan, dan PPT.
 
-### 9.1 Konversi digabung (menggantikan Kurs + Nilai Koleksi)
-Menu Konversi jadi **satu layar tanpa tab**: bagian atas = total nilai koleksi yang bisa dikonversi ke berbagai mata uang; bagian bawah = daftar koleksi yang bisa dipilih (multi-pilih) dan dikonversi ke mata uang pilihan. Tab "Kurs" bebas (1.000 JPY ke IDR) dan tab "Nilai Koleksi" lama diganti layar ini. Syarat dosen "minimal 3 mata uang" tetap lewat pemilih mata uang (44 mata uang dari Frankfurter). Berkas terkait: `screens/convert/convert_screen.dart` (3 tab sekarang), `collection_value_tab.dart`, `widgets/currency_picker.dart`, `services/rates_service.dart` (`getRateInfo`, `valueOfCoins`). Tes yang berubah: T10, T25.
+### 9.1 Konversi digabung (menggantikan Kurs + Nilai Koleksi) — SELESAI (`c5bd56e`, belum diuji di HP)
+Menu Konversi jadi **satu layar tanpa tab** (`screens/convert/convert_screen.dart`). Rancangan awal punya kartu "Total nilai koleksi" di atas; atas keputusan pemilik proyek kartu itu **dihapus** (jumlah seluruh koleksi didapat lewat "Pilih semua", dan permintaan kurs berkurang). Hasil akhir: satu pemilih "Konversi ke" (default IDR), kartu "Total terpilih (N item) ≈ X" (dengan peringatan item tanpa kurs dan tanggal kurs tertua, ditandai bila dari cache), tombol "Pilih semua / Hapus pilihan", dan daftar koleksi dengan kotak centang, nominal asli, negara, tahun, jenis, dan hasil konversi per koin. Kurs diminta **sekali per mata uang koin** (`RatesService.getRateInfo`), bukan per koin; tarik-untuk-menyegarkan memaksa kurs baru. Tab Kurs bebas (1.000 JPY ke IDR) dan tab Nilai Koleksi lama dihapus, begitu pula berkas `collection_value_tab.dart`. Syarat dosen "minimal 3 mata uang" tetap lewat pemilih (44 mata uang dari Frankfurter). Tes yang berubah: **T10** (sekarang lewat daftar koleksi), **T25** (Pilih semua dibandingkan hitungan manual).
 
-### 9.2 Jam Dunia dihapus dari Konversi
-Jam dunia cukup di Jelajah (tab Acara memakai `WorldClockCard`). `screens/convert/world_clock_tab.dart` dihapus dari `ConvertScreen`. Dampak dokumen: Guide 7.7, matriks K7, T11, T33 (pilihan empat zona kini diuji di Jelajah, di kartu jam dan kartu acara).
+### 9.2 Jam Dunia dihapus dari Konversi — SELESAI (`c5bd56e`)
+`world_clock_tab.dart` dihapus. Jam dunia ada di Jelajah, tab Acara, lewat `widgets/world_clock_card.dart` (empat zona: WIB, WITA, WIT, London), dan kartu acara tetap punya pemilih zona. Dampak dokumen: Guide 7.7, matriks K7, T11, T33 (kini diuji di Jelajah); di laporan, "konversi waktu" dijelaskan lewat Jelajah (jam dunia dan zona waktu acara), bukan menu Konversi.
 
 ### 9.3 Rombak UI
 Tetap diinginkan, dikerjakan paling akhir. Beranda sudah bertema baru; layar lain (Profil, Saran, Koleksi, Scan, Konversi, Game, Chat, Jejak Catatan, Jelajah) masih tema perunggu. Rencana: ganti tema global bertahap memakai `AppColors.paper/ink/maroon` dan `AppText`.
@@ -184,12 +186,14 @@ Diuji pemilik proyek di Hari 5 dan dinyatakan aman (**hasil dan screenshot belum
 
 ---
 
-## 11. RENCANA LANJUTAN (disusun Minggu 25 Oktober 2026)
+## 11. RENCANA LANJUTAN (disusun Minggu 25 Oktober 2026, diperbarui Senin 26 Oktober)
 
-### 11.1 Hari ini (Minggu 25 Okt): menyelesaikan aplikasi dengan santai sampai malam
+> **Status 26 Okt:** poin 1 (Konversi gabungan) **SELESAI** (rancangan akhirnya di 9.1: tanpa kartu total). Poin 2 (perbaikan kecil) belum. Poin 3 (rombak UI) sedang berjalan: Beranda versi berwarna sudah ada di berkas tetapi belum di-commit dan belum diperiksa di HP. Poin 4 (uji cepat di HP: Konversi, Beranda, blockchain) belum. Tenggat Selasa 27 Okt, jadi uji formal T01–T38, build release, dan laporan harus dimulai hari ini.
+
+### 11.1 Rencana awal hari kerja aplikasi (disusun Minggu 25 Okt; poin 1 sudah selesai)
 | # | Pekerjaan | Perkiraan | Catatan |
 |---|---|---|---|
-| 1 | **Konversi gabungan** (9.1): satu layar tanpa tab. Atas: total nilai koleksi dengan pilihan mata uang. Bawah: daftar koleksi yang bisa dipilih (multi-pilih) dan dikonversi ke mata uang pilihan. Hapus tab Kurs bebas dan tab Jam Dunia dari `ConvertScreen` (9.2; `WorldClockCard` tetap dipakai di tab Acara Jelajah). Baca dulu `convert_screen.dart`, `collection_value_tab.dart`, `rates_service.dart`, `widgets/currency_picker.dart`, tampilkan rancangan layar, baru tulis kode. | 1,5–2 jam | Menyentuh syarat dosen K7; perbarui T10, T11, T25, T33 |
+| 1 | **[SELESAI, lihat 9.1]** **Konversi gabungan** (9.1): satu layar tanpa tab. Atas: total nilai koleksi dengan pilihan mata uang. Bawah: daftar koleksi yang bisa dipilih (multi-pilih) dan dikonversi ke mata uang pilihan. Hapus tab Kurs bebas dan tab Jam Dunia dari `ConvertScreen` (9.2; `WorldClockCard` tetap dipakai di tab Acara Jelajah). Baca dulu `convert_screen.dart`, `collection_value_tab.dart`, `rates_service.dart`, `widgets/currency_picker.dart`, tampilkan rancangan layar, baru tulis kode. | 1,5–2 jam | Menyentuh syarat dosen K7; perbarui T10, T11, T25, T33 |
 | 2 | **Perbaikan kecil:** catatan terenkripsi yang tertimpa `NULL` bila koin diubah di HP hasil pulihan (pertahankan ciphertext lama bila kolom Catatan tidak diisi pengguna; `coin_repo.update` dan form), dan kekurangan lain yang ditemukan | 0,5 jam | Keputusan kecil masih terbuka (bagian 3) |
 | 3 | **Rombak UI** (9.3): tema global dulu (warna `AppColors.paper/ink/maroon`, AppBar, kartu, tombol, input, `AppText`) supaya semua layar ikut berubah, lalu poles layar demi layar (Koleksi, Konversi baru, Profil, Saran, Scan, Jejak Catatan, Jelajah, Game, Chat) | 2–3 jam | Paling akhir; bila waktu habis, cukup sebagian |
 | 4 | **Uji cepat di HP:** Konversi baru, tema baru, dan blockchain (Periksa di jaringan, Catat sekarang) | 0,5–1 jam | Pasang lewat `flutter run`; koneksi debug vivo sering putus walau APK terpasang |

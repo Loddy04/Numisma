@@ -1,8 +1,11 @@
 // screens/home/beranda_view.dart
-// Tampilan Beranda bergaya buku koleksi: header (foto profil, sapaan), kotak
-// ringkasan bergaris ganda, lalu "Daftar Isi" berisi menu fitur dengan titik
-// penuntun dan nomor halaman. Hanya tampilan: data dan aksi diberikan
-// HomeShell lewat parameter, jadi file ini tidak memanggil service.
+// Tampilan Beranda bergaya buku koleksi: header (foto profil, nama),
+// "Daftar Koleksi" (jumlah koin dan uang kertas), "Daftar Acara" (jumlah dan
+// acara terdekat), lalu "Daftar Isi" berisi menu fitur dengan titik penuntun
+// dan nomor halaman. Kotak ringkasan dibuat ringkas: satu garis tipis, isi
+// transparan.
+// Hanya tampilan: data dan aksi diberikan HomeShell lewat parameter, jadi file
+// ini tidak memanggil service.
 //
 // Nomor di daftar isi hanya hiasan bertema buku (urutan 1, 2, 3, ...),
 // bukan data. Tarik ke bawah untuk menyegarkan.
@@ -11,6 +14,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../core/format_util.dart';
+import '../../core/time_util.dart';
+import '../../models/event.dart';
 import '../../theme.dart';
 import '../../widgets/double_rule.dart';
 
@@ -20,6 +26,12 @@ class BerandaView extends StatelessWidget {
   final int coinCount;
   final int banknoteCount;
   final bool statsLoaded;
+  // Daftar Acara: jumlah acara yang belum mulai dan yang paling dekat
+  // waktunya (null = tidak ada).
+  final int upcomingCount;
+  final Event? nextEvent;
+  final bool eventsLoaded;
+  final VoidCallback onOpenEvents;
   final Future<void> Function() onRefresh;
   // Dipanggil dengan label menu yang diketuk.
   final ValueChanged<String> onOpen;
@@ -31,6 +43,10 @@ class BerandaView extends StatelessWidget {
     required this.coinCount,
     required this.banknoteCount,
     required this.statsLoaded,
+    required this.upcomingCount,
+    required this.nextEvent,
+    required this.eventsLoaded,
+    required this.onOpenEvents,
     required this.onRefresh,
     required this.onOpen,
   });
@@ -46,35 +62,40 @@ class BerandaView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          _header(),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
-            child: DoubleRule(),
-          ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: onRefresh,
-              // AlwaysScrollable supaya tarikan terdeteksi walau isinya muat
-              // dalam satu layar.
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                children: [
-                  _summaryBox(),
-                  const SizedBox(height: 28),
-                  _tocTitle(),
-                  const SizedBox(height: 8),
-                  for (var i = 0; i < _menu.length; i++) _menuRow(i),
-                ],
-              ),
+    return Column(
+      children: [
+        // Header satu warna dengan latar kertas, dipisah dari isi oleh garis
+        // ganda yang sama dengan tepi atas bottom nav.
+        SafeArea(bottom: false, child: _header()),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20),
+          child: DoubleRule(),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            // AlwaysScrollable supaya tarikan terdeteksi walau isinya muat
+            // dalam satu layar.
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+              children: [
+                _sectionTitle('KOLEKSI ANDA'),
+                const SizedBox(height: 10),
+                _collectionCard(),
+                const SizedBox(height: 18),
+                _sectionTitle('ACARA ANDA'),
+                const SizedBox(height: 10),
+                _eventCard(),
+                const SizedBox(height: 18),
+                _sectionTitle('DAFTAR ISI'),
+                const SizedBox(height: 4),
+                for (var i = 0; i < _menu.length; i++) _menuRow(i),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -84,7 +105,7 @@ class BerandaView extends StatelessWidget {
   // turun baris.
   Widget _header() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
       child: Row(
         children: [
           _avatar(),
@@ -93,13 +114,19 @@ class BerandaView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('Halo,', style: AppText.serif(size: 18, italic: true)),
+                Text(
+                  'Halo,',
+                  style: AppText.serif(size: 18, italic: true),
+                ),
                 Text(
                   username,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
-                  style: AppText.mono(size: 14, weight: FontWeight.bold),
+                  style: AppText.serif(
+                    size: 28,
+                    weight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -141,74 +168,164 @@ class BerandaView extends StatelessWidget {
     );
   }
 
-  // Kotak bergaris ganda: dua bingkai 1 px dengan celah 3 px, berisi tiga
-  // kolom. Hanya data nyata (jumlah koin dan uang kertas); nilai uang sengaja
+  // Kerangka kotak: isi transparan (warna kertas Beranda), satu garis tipis,
+  // dan sudut lancip (tanpa lengkung). Mengetuk kotak memanggil [onTap].
+  Widget _card({
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return Material(
+      // Transparan: isi kotak memakai warna latar kertas Beranda.
+      color: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.zero,
+        side: BorderSide(color: AppColors.ink.withValues(alpha: 0.25)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: child,
+      ),
+    );
+  }
+
+  Widget _divider() => Container(
+    width: 1,
+    height: 44,
+    margin: const EdgeInsets.symmetric(vertical: 8),
+    color: AppColors.ink.withValues(alpha: 0.15),
+  );
+
+  // Daftar Koleksi: tiga angka sebaris. Hanya data nyata; nilai uang sengaja
   // tidak ditampilkan karena butuh kurs dari internet.
-  Widget _summaryBox() {
-    final frame = Border.all(color: AppColors.ink);
+  Widget _collectionCard() {
     final total = coinCount + banknoteCount;
     String n(int v) => statsLoaded ? '$v' : '–';
-    return Container(
-      decoration: BoxDecoration(border: frame),
-      padding: const EdgeInsets.all(3),
-      child: Container(
-        decoration: BoxDecoration(border: frame),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _cell('KOIN', n(coinCount)),
-              const VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: AppColors.ink,
-              ),
-              _cell('UANG\nKERTAS', n(banknoteCount)),
-              const VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: AppColors.ink,
-              ),
-              _cell('JUMLAH', n(total)),
-            ],
+    return _card(
+      onTap: () => onOpen('Koleksi'),
+      child: Row(
+        children: [
+          Expanded(child: _stat('KOIN', n(coinCount))),
+          _divider(),
+          Expanded(child: _stat('UANG KERTAS', n(banknoteCount))),
+          _divider(),
+          Expanded(child: _stat('JUMLAH', n(total))),
+        ],
+      ),
+    );
+  }
+
+  // Satu angka (cokelat tua logo, seperti ikon Daftar Isi) dengan label
+  // hitam di bawahnya.
+  Widget _stat(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            value,
+            style: AppText.serif(
+              size: 26,
+              weight: FontWeight.w700,
+              color: AppColors.bronze,
+            ),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            style: AppText.mono(size: 10, spacing: 1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Daftar Acara: kiri jumlah acara yang akan datang, kanan acara terdekat
+  // (waktu WIB, hitung mundur, tempat) atau ajakan menambah bila kosong.
+  Widget _eventCard() {
+    return _card(
+      onTap: onOpenEvents,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 96,
+            child: _stat('AKAN DATANG', eventsLoaded ? '$upcomingCount' : '–'),
+          ),
+          _divider(),
+          Expanded(child: _nextEventInfo(nextEvent)),
+        ],
+      ),
+    );
+  }
+
+  Widget _nextEventInfo(Event? next) {
+    if (next == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            eventsLoaded ? 'Belum ada acara. Ketuk untuk menambah.' : 'Memuat…',
+            style: AppText.serif(size: 14, italic: true),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _cell(String label, String value) {
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Tinggi dua baris tetap, supaya angka tiap kolom sejajar
-            // walau hanya "UANG KERTAS" yang berbaris dua.
-            SizedBox(
-              height: 32,
-              child: Text(
-                label,
-                style: AppText.mono(
-                  size: 11,
-                  spacing: 2,
-                  color: AppColors.bronze,
+      );
+    }
+    final until = next.startUtc.difference(DateTime.now().toUtc());
+    final place = (next.location ?? '').trim();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 10, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            next.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.serif(size: 16, weight: FontWeight.w700),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            formatZone(next.startUtc, zoneWib),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.mono(size: 11),
+          ),
+          const SizedBox(height: 2),
+          Text.rich(
+            TextSpan(
+              children: [
+                // Huruf yang sama dengan nama tempat (serif miring), hanya
+                // warnanya cokelat tua dan tebal.
+                TextSpan(
+                  text: formatCountdown(until),
+                  style: AppText.serif(
+                    size: 13,
+                    italic: true,
+                    weight: FontWeight.w700,
+                    color: AppColors.bronze,
+                  ),
                 ),
-              ),
+                if (place.isNotEmpty)
+                  TextSpan(
+                    text: '  ·  $place',
+                    style: AppText.serif(size: 13, italic: true),
+                  ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: AppText.serif(size: 38, weight: FontWeight.w700),
-            ),
-          ],
-        ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _tocTitle() {
+  // Judul bagian: garis, teks kapital berjarak lebar, garis.
+  Widget _sectionTitle(String title) {
     final line = Expanded(
       child: Container(
         height: 1,
@@ -221,8 +338,8 @@ class BerandaView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text(
-            'DAFTAR ISI',
-            style: AppText.serif(size: 22, spacing: 4, weight: FontWeight.w500),
+            title,
+            style: AppText.serif(size: 18, spacing: 4, weight: FontWeight.w500),
           ),
         ),
         line,
@@ -236,7 +353,7 @@ class BerandaView extends StatelessWidget {
     return InkWell(
       onTap: () => onOpen(item.label),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [

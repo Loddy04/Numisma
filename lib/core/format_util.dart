@@ -55,6 +55,15 @@ String formatDuration(Duration d) {
   return '$hours jam $rest menit';
 }
 
+// Hitung mundur satu satuan saja untuk Beranda: "sebentar lagi", "45 menit
+// lagi", "3 jam lagi", "2 hari lagi". Satuan dibulatkan ke bawah.
+String formatCountdown(Duration d) {
+  if (d.inMinutes < 1) return 'sebentar lagi';
+  if (d.inMinutes < 60) return '${d.inMinutes} menit lagi';
+  if (d.inHours < 24) return '${d.inHours} jam lagi';
+  return '${d.inDays} hari lagi';
+}
+
 // "2026-10-20" -> "20 Okt 2026". Dibuat manual (tanpa paket intl) karena
 // formatnya sederhana dan hanya dipakai di sini.
 String formatRateDate(String isoDate) {

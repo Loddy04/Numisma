@@ -8,12 +8,16 @@ import 'events_tab.dart';
 import 'map_tab.dart';
 
 class ExploreScreen extends StatelessWidget {
-  const ExploreScreen({super.key});
+  // Tab yang terbuka lebih dulu: 0 = Peta, 1 = Acara (dari Daftar Acara di
+  // Beranda).
+  final int initialTab;
+  const ExploreScreen({super.key, this.initialTab = 0});
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
+      initialIndex: initialTab,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Jelajah'),
