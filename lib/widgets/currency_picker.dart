@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/currency_service.dart';
+import 'field_label.dart';
 
 class CurrencyPickerField extends FormField<String> {
   CurrencyPickerField({
@@ -41,11 +42,13 @@ class CurrencyPickerField extends FormField<String> {
              borderRadius: BorderRadius.circular(12),
              onTap: open,
              child: InputDecorator(
-               decoration: InputDecoration(
-                 labelText: label,
-                 errorText: state.errorText,
-                 suffixIcon: const Icon(Icons.arrow_drop_down),
-               ),
+               // Label ada di atas kolom (FieldLabel di form); di dalam kolom
+               // hanya petunjuk isi saat belum dipilih.
+               isEmpty: state.value == null,
+               decoration: appInput(
+                 hint: label,
+                 suffix: const Icon(Icons.keyboard_arrow_down),
+               ).copyWith(errorText: state.errorText),
                // FutureBuilder: mengubah kode tersimpan ("IDR") menjadi
                // nama yang enak dibaca ("Rupiah (IDR)"). Sebelum daftar
                // termuat, atau untuk kode di luar daftar, tampil kodenya.
@@ -53,7 +56,7 @@ class CurrencyPickerField extends FormField<String> {
                  future: CurrencyService.load(),
                  builder: (context, snap) {
                    final code = state.value;
-                   if (code == null) return const Text(' ');
+                   if (code == null) return const SizedBox.shrink();
                    final match = snap.data
                        ?.where((c) => c.code == code)
                        .firstOrNull;

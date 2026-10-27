@@ -21,6 +21,9 @@ import '../../services/ai_service.dart';
 import '../../services/coin_repo.dart';
 import '../../theme.dart';
 import '../../widgets/currency_picker.dart';
+import '../../widgets/field_label.dart';
+import '../../widgets/gradient_button.dart';
+import '../../widgets/soft_card.dart';
 import '../crop/crop_screen.dart';
 
 class CoinFormScreen extends StatefulWidget {
@@ -202,6 +205,8 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
     }
   }
 
+  // Pratinjau foto dalam kartu bersudut bulat dengan bayangan lembut. Garis
+  // merah menandai foto yang belum diisi saat disimpan.
   Widget _buildPhotoPreview() {
     Widget content;
     if (_newPhotoBytes != null) {
@@ -213,23 +218,30 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
         errorBuilder: (_, _, _) => const Icon(Icons.broken_image, size: 40),
       );
     } else {
-      content = const Icon(Icons.add_a_photo, size: 40);
+      content = const Icon(
+        Icons.add_a_photo_outlined,
+        size: 40,
+        color: AppColors.bronze,
+      );
     }
-    return GestureDetector(
-      onTap: _pickPhoto,
-      child: Container(
-        height: 160,
-        decoration: BoxDecoration(
-          color: Colors.black12,
-          borderRadius: BorderRadius.circular(12),
-          // Garis merah menandai foto yang belum diisi saat disimpan.
-          border: _photoError
-              ? Border.all(color: AppColors.danger, width: 2)
-              : null,
+    return Container(
+      height: 190,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: _photoError ? AppColors.danger : AppColors.cardBorder,
+          width: _photoError ? 2 : 1,
         ),
-        clipBehavior: Clip.antiAlias,
-        alignment: Alignment.center,
-        child: SizedBox.expand(child: Center(child: content)),
+        boxShadow: AppShadows.soft,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: _pickPhoto,
+          child: SizedBox.expand(child: Center(child: content)),
+        ),
       ),
     );
   }
@@ -319,100 +331,137 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
 
   // --- Tampilan ------------------------------------------------------
 
-  // Kotak peringatan di atas form hasil Scan. Wajib ada: hasil AI hanyalah
+  // Kartu peringatan di atas form hasil Scan. Wajib ada: hasil AI hanyalah
   // estimasi dan pengguna harus memeriksanya sebelum menyimpan (Bagian 1.6).
   Widget _buildAiBanner() {
     final g = widget.guess!;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: AppColors.gold.withValues(alpha: 0.25),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
+    final small = TextStyle(
+      fontSize: 13,
+      height: 1.4,
+      color: AppColors.ink.withValues(alpha: 0.7),
+    );
+    return SoftCard(
+      color: AppColors.tileActive,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                ),
+                child: const Icon(
                   Icons.auto_awesome,
                   size: 18,
                   color: AppColors.bronze,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    g.isSample
-                        ? 'Hasil contoh, bukan hasil analisis foto ini'
-                        : 'Estimasi AI, bukan penilaian ahli',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  g.isSample
+                      ? 'Hasil contoh, bukan hasil dari foto ini'
+                      : 'Perkiraan dari foto, bukan penilaian ahli',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              g.isSample
-                  ? 'Periksa dan ubah semua kolom sebelum menyimpan.'
-                  : 'Periksa dan koreksi kolom di bawah sebelum menyimpan. '
-                        'Kolom kosong berarti AI tidak yakin.',
-              style: const TextStyle(fontSize: 12),
-            ),
-            if (g.features.trim().isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(g.features, style: const TextStyle(fontSize: 12)),
+              ),
             ],
-            if (g.yearEstimated) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Tahun ${g.year} adalah perkiraan AI dari desain dan gaya, '
-                'bukan tahun yang tertera. Mohon periksa.',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            g.isSample
+                ? 'Periksa dan ubah semua kolom sebelum menyimpan.'
+                : 'Periksa dan koreksi kolom di bawah sebelum menyimpan. '
+                      'Kolom yang kosong berarti belum bisa dipastikan dari foto.',
+            style: small,
+          ),
+          if (g.features.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(g.features, style: small),
+          ],
+          if (g.yearEstimated) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Tahun ${g.year} adalah perkiraan dari desain dan gaya, bukan '
+              'tahun yang tertera. Mohon diperiksa.',
+              style: small.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+          ],
+          if (!g.isSample) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Keyakinan: ${g.confidence}',
                 style: const TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.bronze,
                 ),
               ),
-            ],
-            if (!g.isSample) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Tingkat keyakinan AI: ${g.confidence}',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const gap = SizedBox(height: 12);
+    const gap = SizedBox(height: 16);
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Ubah Koin' : 'Tambah Koin')),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
           children: [
             if (widget.guess != null && !_isEdit) _buildAiBanner(),
             _buildPhotoPreview(),
-            const SizedBox(height: 4),
-            Text(
-              _photoError
-                  ? 'Foto wajib diisi.'
-                  : (_isEdit
-                        ? 'Tekan foto untuk menggantinya.'
-                        : (widget.guess != null
-                              ? 'Tekan foto untuk menggantinya.'
-                              : 'Foto wajib. Hanya disimpan, tidak dianalisis AI.')),
-              style: TextStyle(
-                fontSize: 12,
-                color: _photoError ? AppColors.danger : Colors.black54,
+            const SizedBox(height: 6),
+            Center(
+              child: Text(
+                _photoError
+                    ? 'Foto wajib diisi.'
+                    : (_isEdit
+                          ? 'Tekan foto untuk menggantinya.'
+                          : (widget.guess != null
+                                ? 'Tekan foto untuk menggantinya.'
+                                : 'Foto wajib. Hanya disimpan, tidak dianalisis AI.')),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _photoError
+                      ? AppColors.danger
+                      : AppColors.ink.withValues(alpha: 0.55),
+                ),
               ),
             ),
             gap,
+            const FieldLabel('Jenis'),
             SegmentedButton<String>(
+              style: SegmentedButton.styleFrom(
+                selectedBackgroundColor: AppColors.bronze,
+                selectedForegroundColor: Colors.white,
+                foregroundColor: AppColors.bronze,
+                side: const BorderSide(color: AppColors.cardBorder),
+              ),
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(value: 'coin', label: Text('Koin')),
                 ButtonSegment(value: 'banknote', label: Text('Uang kertas')),
@@ -421,25 +470,28 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
               onSelectionChanged: (s) => setState(() => _type = s.first),
             ),
             gap,
+            const FieldLabel('Negara'),
             TextFormField(
               controller: _country,
-              decoration: const InputDecoration(labelText: 'Negara'),
+              decoration: appInput(hint: 'mis. Jepang'),
               validator: (v) => _validateRequired(v, 'Negara'),
             ),
             gap,
+            const FieldLabel('Nominal'),
             TextFormField(
               controller: _denomination,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(labelText: 'Nominal'),
+              decoration: appInput(hint: 'mis. 100'),
               validator: _validateDenomination,
             ),
             gap,
             // Nama mata uang cukup panjang ("Dolar Singapura (SGD)"),
             // jadi pemilih diberi satu baris penuh.
+            const FieldLabel('Mata uang'),
             CurrencyPickerField(
-              label: 'Mata uang',
+              label: 'Pilih mata uang',
               initialCode: _currencyCode,
               required: true,
               onChanged: (code) => _currencyCode = code,
@@ -449,60 +501,69 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: TextFormField(
-                    controller: _year,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Tahun (opsional)',
-                      helperText: _yearEstimated ? 'Perkiraan AI' : null,
-                    ),
-                    onChanged: (_) {
-                      if (_yearEstimated) {
-                        setState(() => _yearEstimated = false);
-                      }
-                    },
-                    validator: _validateYear,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FieldLabel('Tahun'),
+                      TextFormField(
+                        controller: _year,
+                        keyboardType: TextInputType.number,
+                        decoration: appInput(
+                          hint: 'Opsional',
+                          helper: _yearEstimated ? 'Perkiraan' : null,
+                        ),
+                        onChanged: (_) {
+                          if (_yearEstimated) {
+                            setState(() => _yearEstimated = false);
+                          }
+                        },
+                        validator: _validateYear,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String?>(
-                    initialValue: _condition,
-                    decoration: const InputDecoration(
-                      labelText: 'Kondisi (opsional)',
-                    ),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('-'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FieldLabel('Kondisi'),
+                      DropdownButtonFormField<String?>(
+                        initialValue: _condition,
+                        decoration: appInput(hint: 'Opsional'),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('-'),
+                          ),
+                          for (final c in _conditions)
+                            DropdownMenuItem<String?>(
+                              value: c,
+                              child: Text(c),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() => _condition = v),
                       ),
-                      for (final c in _conditions)
-                        DropdownMenuItem<String?>(value: c, child: Text(c)),
                     ],
-                    onChanged: (v) => setState(() => _condition = v),
                   ),
                 ),
               ],
             ),
             gap,
+            const FieldLabel('Catatan'),
             TextFormField(
               controller: _notes,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Catatan (opsional)',
-                helperText: 'Disimpan terenkripsi.',
+              decoration: appInput(
+                hint: 'Opsional',
+                helper: 'Disimpan terenkripsi.',
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
+            const SizedBox(height: 24),
+            GradientButton(
+              label: _isEdit ? 'Simpan Perubahan' : 'Simpan',
+              loading: _saving,
               onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(_isEdit ? 'Simpan Perubahan' : 'Simpan'),
             ),
           ],
         ),

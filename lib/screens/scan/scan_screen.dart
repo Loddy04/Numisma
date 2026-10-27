@@ -16,6 +16,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/ai_service.dart';
 import '../../services/auth_service.dart';
 import '../../theme.dart';
+import '../../widgets/gradient_button.dart';
+import '../../widgets/soft_card.dart';
 import '../collection/coin_form_screen.dart';
 import '../crop/crop_screen.dart';
 
@@ -142,78 +144,164 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
+  // Layar pilih foto: lingkaran bergradasi bergaya koin dengan ikon pemindai,
+  // penjelasan singkat, dua tombol (kamera bergradasi, galeri bergaris), dan
+  // catatan privasi.
   Widget _buildPicker() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.document_scanner, size: 72, color: AppColors.bronze),
-          const SizedBox(height: 16),
-          const Text(
-            'Foto koin atau uang kertas, lalu AI membaca ciri-cirinya. '
-            'Hasilnya hanya estimasi dan bisa kamu koreksi sebelum disimpan.',
-            textAlign: TextAlign.center,
+          const Spacer(),
+          Center(
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppGradients.brown,
+                boxShadow: AppShadows.strong,
+              ),
+              child: Container(
+                margin: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.center_focus_strong_outlined,
+                  size: 64,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
+          const SizedBox(height: 28),
+          Text(
+            'Scan koin atau uang kertas',
+            textAlign: TextAlign.center,
+            style: AppText.serif(size: 26, weight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Foto koin atau uang kertasmu, lalu Numisma membaca ciri-cirinya. '
+            'Hasilnya hanya perkiraan dan bisa kamu koreksi sebelum disimpan.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              height: 1.45,
+              color: AppColors.ink.withValues(alpha: 0.65),
+            ),
+          ),
+          const Spacer(),
+          GradientButton(
+            label: 'Ambil dengan kamera',
             onPressed: () => _pick(ImageSource.camera),
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('Ambil dengan kamera'),
           ),
           const SizedBox(height: 12),
-          ElevatedButton.icon(
+          OutlinedButton.icon(
             onPressed: () => _pick(ImageSource.gallery),
-            icon: const Icon(Icons.photo_library),
+            icon: const Icon(Icons.photo_library_outlined),
             label: const Text('Pilih dari galeri'),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Foto dikirim ke layanan AI (OpenAI) untuk dianalisis.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.black54),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.lock_outline,
+                size: 14,
+                color: AppColors.ink.withValues(alpha: 0.45),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'Foto dikirim ke layanan AI (OpenAI) untuk dianalisis.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.ink.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
+  // Layar proses: foto dalam kartu, lalu keadaan memuat atau galat dengan
+  // pilihan lanjutan.
   Widget _buildProgress() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: 240,
-            child: Image.memory(_photo!, fit: BoxFit.contain),
+        SoftCard(
+          padding: const EdgeInsets.all(8),
+          radius: 24,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              height: 260,
+              child: Image.memory(_photo!, fit: BoxFit.contain),
+            ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         if (_busy) ...[
           const Center(child: CircularProgressIndicator()),
-          const SizedBox(height: 12),
-          const Text('AI sedang membaca foto...', textAlign: TextAlign.center),
+          const SizedBox(height: 14),
+          Text(
+            'Numisma sedang membaca fotomu…',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColors.ink.withValues(alpha: 0.65)),
+          ),
         ],
         if (_error != null) ...[
-          Text(
-            _error!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.danger),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.danger.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 20,
+                  color: AppColors.danger,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: AppColors.danger),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
-          ElevatedButton(onPressed: _analyze, child: const Text('Coba lagi')),
-          const SizedBox(height: 8),
+          GradientButton(label: 'Coba lagi', onPressed: _analyze),
+          const SizedBox(height: 10),
           OutlinedButton(
             onPressed: () => _openForm(null),
             child: const Text('Isi manual dengan foto ini'),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           OutlinedButton(
             onPressed: () => _openForm(CoinGuess.sample()),
             child: const Text('Gunakan hasil contoh'),
           ),
+          const SizedBox(height: 4),
           TextButton(
             onPressed: () => setState(() {
               _photo = null;

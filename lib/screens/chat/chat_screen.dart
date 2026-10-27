@@ -20,6 +20,8 @@ import '../../services/ai_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/coin_repo.dart';
 import '../../theme.dart';
+import '../../widgets/field_label.dart';
+import '../../widgets/soft_card.dart';
 
 class ChatScreen extends StatefulWidget {
   // null = mode umum.
@@ -254,10 +256,10 @@ class _ChatScreenState extends State<ChatScreen> {
       // Mode umum: pengguna perlu tahu apa saja yang dikirim ke AI.
       text =
           'AI bisa melihat daftar koleksimu ($_collectionCount item: negara, '
-          'nominal, tahun, kondisi). Foto, catatan, dan harga beli tidak '
+          'nominal, tahun, kondisi). Foto dan catatan pribadimu tidak '
           'dikirim.';
     } else if (hasPhoto) {
-      text = 'AI melihat foto dan data koin ini. Jawabannya hanya estimasi.';
+      text = 'AI melihat foto dan data koin ini. Jawabannya hanya perkiraan.';
     } else {
       text =
           'Koin ini tidak punya foto di perangkat ini, jadi AI hanya '
@@ -265,10 +267,89 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     return Container(
       width: double.infinity,
-      color: AppColors.gold.withValues(alpha: 0.25),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(text, style: const TextStyle(fontSize: 12)),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.tileActive,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 16, color: AppColors.bronze),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: AppColors.ink.withValues(alpha: 0.75),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  // Daftar pertanyaan cepat di tengah percakapan: lembar bawah berisi
+  // pertanyaan yang sama dengan layar awal. Memilih satu langsung
+  // mengirimnya; tidak aktif saat AI sedang menjawab.
+  Future<void> _showSuggestions() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.creamTop,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Pertanyaan cepat',
+                style: AppText.serif(size: 22, weight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              for (final s in _suggestions)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: SoftCard(
+                    onTap: () => Navigator.of(ctx).pop(s),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            s,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.north_east,
+                          size: 18,
+                          color: AppColors.bronze,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null && mounted && !_waiting) _useSuggestion(picked);
   }
 
   Widget _buildMessages() {
@@ -276,27 +357,57 @@ class _ChatScreenState extends State<ChatScreen> {
       return ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          const Icon(Icons.chat, size: 56, color: AppColors.bronze),
-          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppGradients.brown,
+                boxShadow: AppShadows.soft,
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline,
+                size: 34,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
             widget.contextCoin == null
                 ? 'Tanyakan apa saja seputar koin dan uang kertas.'
                 : 'Tanyakan tentang koin ini.',
             textAlign: TextAlign.center,
+            style: AppText.serif(size: 22, weight: FontWeight.w700),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Jawaban AI hanya estimasi, bukan penilaian ahli.',
+          const SizedBox(height: 6),
+          Text(
+            'Jawaban hanya perkiraan, bukan penilaian ahli.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.ink.withValues(alpha: 0.55),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           for (final s in _suggestions)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: OutlinedButton(
-                onPressed: () => _useSuggestion(s),
-                child: Text(s, textAlign: TextAlign.center),
+              padding: const EdgeInsets.only(bottom: 10),
+              child: SoftCard(
+                onTap: () => _useSuggestion(s),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                child: Text(
+                  s,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
         ],
@@ -324,14 +435,27 @@ class _ChatScreenState extends State<ChatScreen> {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.8,
         ),
+        // Gelembung pengguna bergradasi cokelat, gelembung AI putih dengan
+        // garis krem; sudut ekor yang menghadap pembicara dibuat lancip.
         decoration: BoxDecoration(
-          color: mine ? AppColors.bronze : AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 3)],
+          gradient: mine ? AppGradients.brown : null,
+          color: mine ? null : AppColors.card,
+          border: mine ? null : Border.all(color: AppColors.cardBorder),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(20),
+            topRight: const Radius.circular(20),
+            bottomLeft: Radius.circular(mine ? 20 : 6),
+            bottomRight: Radius.circular(mine ? 6 : 20),
+          ),
+          boxShadow: AppShadows.soft,
         ),
         child: SelectableText(
           m.text,
-          style: TextStyle(color: mine ? Colors.white : AppColors.textDark),
+          style: TextStyle(
+            fontSize: 15,
+            height: 1.45,
+            color: mine ? Colors.white : AppColors.ink,
+          ),
         ),
       ),
     );
@@ -384,7 +508,17 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // Pertanyaan cepat tetap bisa dibuka di tengah percakapan.
+            IconButton(
+              tooltip: 'Pertanyaan cepat',
+              onPressed: _waiting ? null : _showSuggestions,
+              icon: const Icon(
+                Icons.lightbulb_outline,
+                color: AppColors.bronze,
+              ),
+            ),
             Expanded(
               child: TextField(
                 controller: _input,
@@ -392,14 +526,30 @@ class _ChatScreenState extends State<ChatScreen> {
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendTyped(),
-                decoration: const InputDecoration(hintText: 'Tulis pertanyaan'),
+                decoration: appInput(hint: 'Tulis pertanyaan', radius: 24),
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: _waiting ? null : _sendTyped,
-              style: IconButton.styleFrom(backgroundColor: AppColors.bronze),
-              icon: const Icon(Icons.send),
+            // Tombol kirim bulat bergradasi.
+            Opacity(
+              opacity: _waiting ? 0.5 : 1,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppGradients.brown,
+                  boxShadow: AppShadows.soft,
+                ),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _waiting ? null : _sendTyped,
+                    child: const Icon(Icons.send, color: Colors.white),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

@@ -9,6 +9,10 @@ import 'package:flutter/material.dart';
 import '../../theme.dart';
 import '../../widgets/app_logo.dart';
 
+// FieldLabel dipindah ke widgets/field_label.dart; diekspor ulang supaya
+// Login dan Daftar tidak perlu mengubah import.
+export '../../widgets/field_label.dart' show FieldLabel;
+
 // Kepala halaman Login: gradasi cokelat dengan lingkaran tipis bergaya koin
 // di pojok kanan atas, logo, nama, dan tagline.
 class AuthHero extends StatelessWidget {
@@ -70,28 +74,6 @@ class AuthHero extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Label kecil huruf kapital di atas kolom isian ("EMAIL", "PASSWORD").
-class FieldLabel extends StatelessWidget {
-  final String text;
-  const FieldLabel(this.text, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 6),
-      child: Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 12,
-          letterSpacing: 1.2,
-          fontWeight: FontWeight.w700,
-          color: AppColors.fieldLabel,
-        ),
       ),
     );
   }

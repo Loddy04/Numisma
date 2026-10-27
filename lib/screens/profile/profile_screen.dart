@@ -16,6 +16,7 @@ import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../../theme.dart';
+import '../../widgets/soft_card.dart';
 import '../crop/crop_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -200,21 +201,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return '$dd/$mm/${d.year}';
   }
 
+  // Foto bulat dengan cincin emas di atas kepala bergradasi. Ikon kamera kecil
+  // di pojok menandakan foto bisa diganti.
   Widget _buildAvatar(User user) {
-    const radius = 64.0;
+    const radius = 52.0;
     final path = user.photoPath;
 
     // onBackgroundImageError (di bawah) menelan error bila file foto
     // hilang, jadi layar tidak crash; avatar tampil sebagai lingkaran polos.
     final ImageProvider? image = path == null ? null : FileImage(File(path));
-    final avatar = CircleAvatar(
-      radius: radius,
-      backgroundColor: AppColors.gold.withValues(alpha: 0.4),
-      backgroundImage: image,
-      onBackgroundImageError: image == null ? null : (_, _) {},
-      child: image == null
-          ? const Icon(Icons.person, size: 72, color: AppColors.bronze)
-          : null,
+    final avatar = Container(
+      padding: const EdgeInsets.all(3),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.gold,
+      ),
+      child: CircleAvatar(
+        radius: radius,
+        backgroundColor: AppColors.creamBottom,
+        backgroundImage: image,
+        onBackgroundImageError: image == null ? null : (_, _) {},
+        child: image == null
+            ? const Icon(Icons.person, size: 64, color: AppColors.bronze)
+            : null,
+      ),
     );
 
     return Stack(
@@ -223,23 +233,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         GestureDetector(onTap: _changePhoto, child: avatar),
         if (_savingPhoto)
           const SizedBox(
-            width: radius * 2,
-            height: radius * 2,
-            child: CircularProgressIndicator(),
+            width: radius * 2 + 6,
+            height: radius * 2 + 6,
+            child: CircularProgressIndicator(color: Colors.white),
           ),
-        // Ikon kamera kecil sebagai petunjuk bahwa foto bisa diganti.
         Positioned(
           right: 0,
-          bottom: 0,
+          bottom: 2,
           child: Material(
-            color: AppColors.bronze,
+            color: Colors.white,
             shape: const CircleBorder(),
+            elevation: 2,
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: _changePhoto,
               child: const Padding(
                 padding: EdgeInsets.all(8),
-                child: Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                child: Icon(
+                  Icons.camera_alt,
+                  size: 18,
+                  color: AppColors.bronze,
+                ),
               ),
             ),
           ),
@@ -248,12 +262,101 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _infoTile(IconData icon, String label, String value) {
-    return Card(
-      child: ListTile(
-        leading: Icon(icon, color: AppColors.bronze),
-        title: Text(label, style: const TextStyle(fontSize: 12)),
-        subtitle: Text(value, style: const TextStyle(fontSize: 16)),
+  // Kepala Profil: kartu bergradasi cokelat berisi foto, nama, dan email.
+  Widget _buildHeader(User user) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
+      decoration: BoxDecoration(
+        gradient: AppGradients.brown,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppShadows.strong,
+      ),
+      child: Column(
+        children: [
+          _buildAvatar(user),
+          const SizedBox(height: 14),
+          Text(
+            user.username,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.serif(
+              size: 28,
+              weight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _email,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Ketuk foto untuk mengganti',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Satu baris info dalam kartu: ikon dalam lingkaran lembut, label kecil,
+  // dan nilai. `onTap` dan `trailing` opsional (mis. ubah nama).
+  Widget _infoRow(
+    IconData icon,
+    String label,
+    String value, {
+    VoidCallback? onTap,
+    Widget? trailing,
+  }) {
+    return SoftCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.tileActive,
+            ),
+            child: Icon(icon, color: AppColors.bronze, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.ink.withValues(alpha: 0.55),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ?trailing,
+        ],
       ),
     );
   }
@@ -267,35 +370,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
-        Center(child: _buildAvatar(user)),
-        const SizedBox(height: 8),
-        const Center(
-          child: Text(
-            'Tekan foto untuk mengganti',
-            style: TextStyle(fontSize: 12, color: Colors.black54),
-          ),
+        _buildHeader(user),
+        const SizedBox(height: 20),
+        _infoRow(
+          Icons.person_outline,
+          'Nama tampilan',
+          user.username,
+          onTap: _editName,
+          trailing: const Icon(Icons.edit_outlined, size: 20),
         ),
-        const SizedBox(height: 24),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.person, color: AppColors.bronze),
-            title: const Text('Nama tampilan', style: TextStyle(fontSize: 12)),
-            subtitle: Text(
-              user.username,
-              style: const TextStyle(fontSize: 16),
-            ),
-            trailing: const Icon(Icons.edit, size: 20),
-            onTap: _editName,
-          ),
+        const SizedBox(height: 12),
+        _infoRow(
+          Icons.event_outlined,
+          'Bergabung',
+          _formatDate(user.createdAt),
         ),
-        _infoTile(Icons.email, 'Email', _email),
-        _infoTile(Icons.event, 'Bergabung', _formatDate(user.createdAt)),
-        Card(
+        const SizedBox(height: 12),
+        SoftCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           child: SwitchListTile(
-            secondary: const Icon(Icons.fingerprint, color: AppColors.bronze),
-            title: const Text('Masuk dengan sidik jari'),
+            contentPadding: EdgeInsets.zero,
+            secondary: Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.tileActive,
+              ),
+              child: const Icon(Icons.fingerprint, color: AppColors.bronze),
+            ),
+            title: const Text(
+              'Masuk dengan sidik jari',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
             subtitle: Text(
               _biometricAvailable
                   ? 'Login tanpa mengetik password.'

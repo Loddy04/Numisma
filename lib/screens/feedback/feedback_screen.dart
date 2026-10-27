@@ -10,6 +10,9 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/feedback_repo.dart';
 import '../../theme.dart';
+import '../../widgets/field_label.dart';
+import '../../widgets/gradient_button.dart';
+import '../../widgets/soft_card.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key});
@@ -110,104 +113,85 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   }
 
   // Baris bintang. `onSelect` null = hanya tampilan (di riwayat).
-  Widget _stars(int value, {ValueChanged<int>? onSelect, double size = 32}) {
+  Widget _stars(int value, {ValueChanged<int>? onSelect, double size = 36}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 1; i <= 5; i++)
           GestureDetector(
             onTap: onSelect == null ? null : () => onSelect(i),
-            child: Icon(
-              i <= value ? Icons.star : Icons.star_border,
-              size: size,
-              color: AppColors.gold,
+            child: Padding(
+              padding: EdgeInsets.only(right: onSelect == null ? 2 : 6),
+              child: Icon(
+                i <= value ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: size,
+                color: AppColors.gold,
+              ),
             ),
           ),
       ],
     );
   }
 
+  Widget _error(String text) => Padding(
+    padding: const EdgeInsets.only(top: 6, left: 4),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 12, color: AppColors.danger),
+    ),
+  );
+
   Widget _buildForm() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Mata kuliah Pemrograman Aplikasi Mobile',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Bagaimana saran dan kesanmu untuk mata kuliah ini?',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-            const SizedBox(height: 16),
-            _stars(
-              _rating,
-              onSelect: (v) => setState(() {
-                _rating = v;
-                _ratingError = false;
-              }),
-            ),
-            if (_ratingError)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  'Pilih rating bintang dulu.',
-                  style: TextStyle(fontSize: 12, color: AppColors.danger),
-                ),
-              ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _kesanController,
-              maxLines: 3,
-              onChanged: (_) {
-                if (_textError) setState(() => _textError = false);
-              },
-              decoration: const InputDecoration(labelText: 'Kesan'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _saranController,
-              maxLines: 3,
-              onChanged: (_) {
-                if (_textError) setState(() => _textError = false);
-              },
-              decoration: const InputDecoration(labelText: 'Saran'),
-            ),
-            if (_textError)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  'Isi saran atau kesan (boleh salah satu).',
-                  style: TextStyle(fontSize: 12, color: AppColors.danger),
-                ),
-              ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _submit,
-                child: _saving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Kirim'),
-              ),
-            ),
-          ],
-        ),
+    return SoftCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const FieldLabel('Penilaian'),
+          _stars(
+            _rating,
+            onSelect: (v) => setState(() {
+              _rating = v;
+              _ratingError = false;
+            }),
+          ),
+          if (_ratingError) _error('Pilih rating bintang dulu.'),
+          const SizedBox(height: 18),
+          const FieldLabel('Kesan'),
+          TextField(
+            controller: _kesanController,
+            maxLines: 3,
+            onChanged: (_) {
+              if (_textError) setState(() => _textError = false);
+            },
+            decoration: appInput(hint: 'Apa kesanmu selama mengikuti kuliah ini?'),
+          ),
+          const SizedBox(height: 16),
+          const FieldLabel('Saran'),
+          TextField(
+            controller: _saranController,
+            maxLines: 3,
+            onChanged: (_) {
+              if (_textError) setState(() => _textError = false);
+            },
+            decoration: appInput(hint: 'Apa saranmu untuk perkuliahan ini?'),
+          ),
+          if (_textError) _error('Isi saran atau kesan (boleh salah satu).'),
+          const SizedBox(height: 20),
+          GradientButton(
+            label: 'Kirim',
+            loading: _saving,
+            onPressed: _saving ? null : _submit,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildHistoryItem(FeedbackEntry e) {
-    return Card(
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SoftCard(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,23 +199,24 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _stars(e.rating, size: 18),
+                _stars(e.rating, size: 20),
                 Text(
                   _formatDateTime(e.createdAt),
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.ink.withValues(alpha: 0.5),
+                  ),
                 ),
               ],
             ),
             if (e.kesan != null) ...[
-              const SizedBox(height: 8),
-              const Text('Kesan',
-                  style: TextStyle(fontSize: 12, color: Colors.black54)),
+              const SizedBox(height: 12),
+              const FieldLabel('Kesan'),
               Text(e.kesan!),
             ],
             if (e.saran != null) ...[
-              const SizedBox(height: 8),
-              const Text('Saran',
-                  style: TextStyle(fontSize: 12, color: Colors.black54)),
+              const SizedBox(height: 12),
+              const FieldLabel('Saran'),
               Text(e.saran!),
             ],
           ],
@@ -245,24 +230,32 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       children: [
-        _buildForm(),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Text(
-            'Riwayat',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          'Mata kuliah Pemrograman Aplikasi Mobile',
+          style: AppText.serif(size: 20, weight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Bagaimana saran dan kesanmu untuk mata kuliah ini?',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppColors.ink.withValues(alpha: 0.6),
           ),
         ),
+        const SizedBox(height: 16),
+        _buildForm(),
+        const SizedBox(height: 24),
+        Text('Riwayat', style: AppText.serif(size: 20, weight: FontWeight.w700)),
+        const SizedBox(height: 12),
         if (_history.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Belum ada kiriman.'),
+          Text(
+            'Belum ada kiriman.',
+            style: TextStyle(color: AppColors.ink.withValues(alpha: 0.6)),
           )
         else
           for (final e in _history) _buildHistoryItem(e),
-        const SizedBox(height: 16),
       ],
     );
   }

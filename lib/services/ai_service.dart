@@ -110,7 +110,7 @@ class CoinGuess {
       year: yearOk ? yearRaw : null,
       // Tanda "perkiraan" hanya bermakna bila tahunnya ada.
       yearEstimated: yearOk && estimated,
-      features: text(json['features']) ?? '',
+      features: tidyAiText(text(json['features']) ?? ''),
       confidence: const ['low', 'medium', 'high'].contains(confidence)
           ? confidence!
           : 'low',
@@ -150,7 +150,12 @@ class AiService {
       'Isi null hanya bila benar-benar tidak ada petunjuk sama sekali\n'
       '- year_estimated: true bila year adalah perkiraan, false bila tahunnya '
       'tertera dan terbaca\n'
-      '- features: ciri khas dalam maksimal 2 kalimat bahasa Indonesia\n'
+      '- features: deskripsi singkat bahasa Indonesia, satu sampai dua kalimat '
+      'utuh, seperti catatan seorang kolektor. Sebut motif atau gambar '
+      'utama, bahan atau warna, dan tulisan yang terlihat. Langsung ke isi, '
+      'tanpa pembuka seperti "Koin ini" atau "Ini adalah", tanpa kata '
+      'berlebihan seperti "indah" atau "unik", dan tanpa tanda seru, emoji, '
+      'atau tanda strip. Tulis hanya yang benar-benar terlihat di foto\n'
       '- confidence: "low", "medium", atau "high"\n'
       'Untuk kunci selain year: jika tidak yakin, isi null dan confidence '
       '"low". Jangan mengarang. Turunkan confidence bila year hanya '
@@ -160,16 +165,21 @@ class AiService {
   // ditambahkan: jawaban ditampilkan sebagai teks biasa, jadi tanda Markdown
   // (**tebal**, # judul) hanya akan tampil sebagai simbol yang mengganggu.
   static const _chatPrompt =
-      'Kamu adalah "Tanya Numisma", asisten untuk kolektor koin dan uang '
+      'Kamu adalah "Tanya Numisma", teman bicara untuk kolektor koin dan uang '
       'kertas.\n'
-      'Jawab dalam bahasa Indonesia, singkat (maksimal 6 kalimat).\n'
+      'Jawab dalam bahasa Indonesia yang hangat dan jelas, seperti sesama '
+      'kolektor yang sedang menjelaskan, maksimal 5 kalimat.\n'
       'Hanya bahas numismatik: sejarah koin atau uang, perawatan, ciri umum '
       'keaslian, istilah.\n'
       'Untuk pertanyaan di luar topik, tolak dengan sopan dan arahkan '
       'kembali.\n'
       'Jangan memberi harga pasti atau menjamin keaslian; sarankan konsultasi '
       'ke ahli atau pedagang bereputasi.\n'
-      'Tulis teks biasa tanpa format Markdown.';
+      'Gaya tulisan: paragraf pendek berisi kalimat utuh. Jangan memakai '
+      'daftar berpoin, tanda strip sebagai pemisah, tanda bintang, atau '
+      'Markdown apa pun. Bila ada beberapa hal, rangkai dalam kalimat dengan '
+      'kata seperti "pertama", "lalu", dan "terakhir". Jangan membuka dengan '
+      '"Tentu" atau "Baik", dan jangan mengulang pertanyaan pengguna.';
 
   // Hanya sekian pesan terakhir yang dikirim: percakapan panjang membuat
   // biaya dan waktu tunggu membengkak (Guide 7.9b).
@@ -225,7 +235,9 @@ class AiService {
       'max_completion_tokens': 700,
       'messages': messages,
     });
-    return answer.trim();
+    // Jaring pengaman: bila model tetap memakai bullet, strip, atau Markdown,
+    // dirapikan di sini.
+    return tidyAiText(answer);
   }
 
   // Mengirim satu foto dan mengembalikan tebakan AI. Foto sudah diperkecil
@@ -332,4 +344,39 @@ class AiService {
       throw const AiException('Jawaban AI kosong atau tidak dikenali.');
     }
   }
+}
+
+// Merapikan teks dari AI supaya tidak terkesan "mesin": membuang tanda
+// Markdown (**tebal**, # judul), awalan poin ("- ", "* ", "•") dan
+// menggantinya dengan kalimat biasa, mengganti tanda strip sebagai pemisah
+// (" - ", "—", " – ") dengan koma, dan merapatkan baris kosong berlebih.
+// Fungsi murni: dipakai untuk jawaban chat dan ringkasan scan, dan diuji di
+// test/ai_tidy_test.dart. Strip di dalam kata (mis. "Hong Kong-dollar") dan
+// rentang angka (8–64) sengaja tidak disentuh.
+String tidyAiText(String input) {
+  var t = input.replaceAll('\r\n', '\n');
+
+  // Markdown: tebal, miring dengan garis bawah ganda, judul.
+  t = t.replaceAll('**', '').replaceAll('__', '');
+  t = t.replaceAll(RegExp(r'^\s{0,3}#{1,6}\s+', multiLine: true), '');
+
+  // Awalan poin di awal baris; baris poin diakhiri titik bila belum
+  // berakhir tanda baca, supaya terbaca sebagai kalimat.
+  t = t.replaceAllMapped(
+    RegExp(r'^[ \t]*[-*•][ \t]+(.+)$', multiLine: true),
+    (m) {
+      final line = m.group(1)!.trimRight();
+      return RegExp(r'[.!?:;]$').hasMatch(line) ? line : '$line.';
+    },
+  );
+
+  // Strip sebagai pemisah kalimat: em dash di mana pun, en dash dan tanda
+  // hubung hanya bila diapit spasi.
+  t = t.replaceAll(RegExp(r'\s*—\s*'), ', ');
+  t = t.replaceAll(RegExp(r'[ \t]+[–-][ \t]+'), ', ');
+
+  // Rapikan spasi dan baris kosong.
+  t = t.replaceAll(RegExp(r'[ \t]+\n'), '\n');
+  t = t.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+  return t.trim();
 }
