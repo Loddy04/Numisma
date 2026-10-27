@@ -265,6 +265,26 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
+      // Lembar bawah (filter, pemilih mata uang, pertanyaan cepat): latar krem
+      // dengan sudut atas sangat bulat.
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.creamTop,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+      // Tombol mengambang (mis. "Tambah" di Koleksi): pil cokelat.
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: AppColors.bronze,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        extendedTextStyle: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
       dividerTheme: DividerThemeData(
         color: AppColors.ink.withValues(alpha: 0.12),
         thickness: 1,

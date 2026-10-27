@@ -7,6 +7,10 @@
 
 import 'package:flutter/material.dart';
 
+import '../../theme.dart';
+import '../../widgets/field_label.dart';
+import '../../widgets/gradient_button.dart';
+
 // Kumpulan pilihan filter. Nilai null berarti "semua / tidak dibatasi".
 class CoinFilters {
   final String? type; // 'coin' atau 'banknote'
@@ -58,7 +62,8 @@ class _CollectionFilterSheetState extends State<CollectionFilterSheet> {
     super.dispose();
   }
 
-  // Satu baris pilihan berupa chip. `value` null = opsi "Semua".
+  // Satu baris pilihan berupa chip bulat. `value` null = opsi "Semua". Chip
+  // terpilih berwarna cokelat, lainnya putih bergaris krem.
   Widget _chips<T>({
     required String title,
     required List<(T?, String)> options,
@@ -68,21 +73,51 @@ class _CollectionFilterSheetState extends State<CollectionFilterSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
+        FieldLabel(title),
         Wrap(
           spacing: 8,
+          runSpacing: 8,
           children: [
             for (final (value, label) in options)
-              ChoiceChip(
-                label: Text(label),
-                selected: selected == value,
-                onSelected: (_) => setState(() => onSelected(value)),
+              _chip(
+                label: label,
+                active: selected == value,
+                onTap: () => setState(() => onSelected(value)),
               ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
       ],
+    );
+  }
+
+  Widget _chip({
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: active ? AppColors.bronze : AppColors.card,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: active ? AppColors.bronze : AppColors.cardBorder,
+        ),
+      ),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: active ? Colors.white : AppColors.bronze,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -110,85 +145,92 @@ class _CollectionFilterSheetState extends State<CollectionFilterSheet> {
   @override
   Widget build(BuildContext context) {
     // viewInsets.bottom = tinggi keyboard, supaya isian tahun tidak tertutup.
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _chips<String>(
-              title: 'Jenis',
-              options: const [
-                (null, 'Semua'),
-                ('coin', 'Koin'),
-                ('banknote', 'Uang kertas'),
-              ],
-              selected: _type,
-              onSelected: (v) => _type = v,
-            ),
-            _chips<String>(
-              title: 'Kondisi',
-              options: [
-                (null, 'Semua'),
-                for (final c in _conditions) (c, c),
-              ],
-              selected: _condition,
-              onSelected: (v) => _condition = v,
-            ),
-            const Text('Rentang tahun',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _yearFrom,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Dari'),
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Filter dan urutan',
+                style: AppText.serif(size: 24, weight: FontWeight.w700),
+              ),
+              const SizedBox(height: 16),
+              _chips<String>(
+                title: 'Jenis',
+                options: const [
+                  (null, 'Semua'),
+                  ('coin', 'Koin'),
+                  ('banknote', 'Uang kertas'),
+                ],
+                selected: _type,
+                onSelected: (v) => _type = v,
+              ),
+              _chips<String>(
+                title: 'Kondisi',
+                options: [
+                  (null, 'Semua'),
+                  for (final c in _conditions) (c, c),
+                ],
+                selected: _condition,
+                onSelected: (v) => _condition = v,
+              ),
+              const FieldLabel('Rentang tahun'),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _yearFrom,
+                      keyboardType: TextInputType.number,
+                      decoration: appInput(hint: 'Dari'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _yearTo,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Sampai'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _yearTo,
+                      keyboardType: TextInputType.number,
+                      decoration: appInput(hint: 'Sampai'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _chips<String>(
-              title: 'Urutkan',
-              options: const [
-                ('newest', 'Terbaru'),
-                ('year', 'Tahun'),
-                ('denomination', 'Nominal'),
-              ],
-              selected: _sort,
-              onSelected: (v) => _sort = v ?? 'newest',
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    // Reset = kembali ke pilihan bawaan (tanpa filter).
-                    onPressed: () =>
-                        Navigator.of(context).pop(const CoinFilters()),
-                    child: const Text('Reset'),
+                ],
+              ),
+              const SizedBox(height: 18),
+              _chips<String>(
+                title: 'Urutkan',
+                options: const [
+                  ('newest', 'Terbaru'),
+                  ('year', 'Tahun'),
+                  ('denomination', 'Nominal'),
+                ],
+                selected: _sort,
+                onSelected: (v) => _sort = v ?? 'newest',
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      // Reset = kembali ke pilihan bawaan (tanpa filter).
+                      onPressed: () =>
+                          Navigator.of(context).pop(const CoinFilters()),
+                      child: const Text('Reset'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _apply,
-                    child: const Text('Terapkan'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GradientButton(
+                      label: 'Terapkan',
+                      onPressed: _apply,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

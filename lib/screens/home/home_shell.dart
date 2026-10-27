@@ -8,12 +8,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-import '../../models/coin.dart';
 import '../../models/event.dart';
 import '../../services/auth_service.dart';
 import '../../services/coin_repo.dart';
 import '../../services/event_repo.dart';
-import '../../services/rates_service.dart';
 import '../../services/notif_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme.dart';
@@ -64,11 +62,6 @@ class _HomeShellState extends State<HomeShell> {
   int _coinCount = 0;
   int _banknoteCount = 0;
   bool _statsLoaded = false;
-
-  // Nilai nominal setara seluruh koleksi dalam rupiah (null = belum ada atau
-  // kurs tidak tersedia). Dihitung di latar belakang dari cache kurs, tidak
-  // menahan layar.
-  CollectionValue? _value;
 
   // Ringkasan acara untuk Daftar Acara di Beranda: jumlah yang akan datang
   // dan yang paling dekat waktunya (null bila tidak ada).
@@ -129,17 +122,6 @@ class _HomeShellState extends State<HomeShell> {
         _banknoteCount = coins.length - _coinCount;
         _statsLoaded = true;
       });
-      unawaited(_loadValue(coins));
-    } catch (_) {}
-  }
-
-  // Nilai nominal setara dalam IDR. Gagal (offline tanpa cache) tidak fatal:
-  // kartu menampilkan tanda "–".
-  Future<void> _loadValue(List<Coin> coins) async {
-    try {
-      final value = await RatesService().valueOfCoins(coins, 'IDR');
-      if (!mounted) return;
-      setState(() => _value = value);
     } catch (_) {}
   }
 
@@ -183,15 +165,6 @@ class _HomeShellState extends State<HomeShell> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => page)).then((_) => _loadEvents());
-  }
-
-  // "+N lainnya": daftar semua acara (tab Acara di Jelajah).
-  void _openEventList() {
-    Navigator.of(context)
-        .push(
-          MaterialPageRoute(builder: (_) => const ExploreScreen(initialTab: 1)),
-        )
-        .then((_) => _loadEvents());
   }
 
   // Membuka halaman fitur dari menu Jelajahi di Beranda.
@@ -287,9 +260,7 @@ class _HomeShellState extends State<HomeShell> {
       upcomingCount: _upcomingCount,
       nextEvent: _nextEvent,
       eventsLoaded: _eventsLoaded,
-      value: _value,
       onOpenEvents: _openEvents,
-      onOpenEventList: _openEventList,
       onRefresh: _loadPhoto,
       onOpen: _openFeature,
     );

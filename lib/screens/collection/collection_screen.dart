@@ -17,6 +17,9 @@ import '../../services/coin_repo.dart';
 import '../../services/rates_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme.dart';
+import '../../widgets/confirm_dialog.dart';
+import '../../widgets/field_label.dart';
+import '../../widgets/soft_card.dart';
 import 'coin_detail_screen.dart';
 import 'coin_form_screen.dart';
 import 'collection_filter_sheet.dart';
@@ -205,24 +208,12 @@ class _CollectionScreenState extends State<CollectionScreen> {
 
   Future<void> _deleteSelected() async {
     final count = _selected.length;
-    final yakin = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus koin'),
-        content: Text('$count koin terpilih akan dihapus. Lanjutkan?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
+    final yakin = await confirmDialog(
+      context,
+      title: 'Hapus koin?',
+      message: '$count koin terpilih akan dihapus. Lanjutkan?',
     );
-    if (yakin != true) return;
+    if (!yakin) return;
 
     try {
       // Salinan daftar, karena _selected akan berubah saat _load() jalan.
@@ -242,25 +233,41 @@ class _CollectionScreenState extends State<CollectionScreen> {
 
   // --- Tampilan -------------------------------------------------------
 
+  // Foto koin dalam kotak bersudut bulat. Tanpa foto (atau file hilang):
+  // kotak emas bergradasi berisi nominalnya, supaya daftar tetap rapi.
   Widget _thumbnail(Coin coin) {
-    const size = 56.0;
-    final path = coin.photoPath;
-    // Foto bisa tidak ada (koin tanpa foto, atau hasil Pulihkan nanti);
-    // errorBuilder menjaga tampilan tetap rapi, bukan crash.
+    const size = 64.0;
+    final radius = BorderRadius.circular(16);
     final fallback = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.3),
-        shape: BoxShape.circle,
+        borderRadius: radius,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEBD8AE), AppColors.gold],
+        ),
       ),
-      child: Icon(
-        coin.type == 'banknote' ? Icons.payments : Icons.monetization_on,
-        color: AppColors.bronze,
+      alignment: Alignment.center,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: FittedBox(
+          child: Text(
+            coin.denominationLabel,
+            style: AppText.serif(
+              size: 22,
+              weight: FontWeight.w700,
+              color: AppColors.heroDark,
+            ),
+          ),
+        ),
       ),
     );
+    final path = coin.photoPath;
     if (path == null) return fallback;
-    return ClipOval(
+    return ClipRRect(
+      borderRadius: radius,
       child: Image.file(
         File(path),
         width: size,
@@ -274,7 +281,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
   PreferredSizeWidget _buildAppBar() {
     if (!_selecting) {
       return AppBar(
-        title: const Text('Koleksi'),
         actions: [
           IconButton(
             tooltip: 'Sinkron',
@@ -306,7 +312,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.delete),
+          icon: const Icon(Icons.delete_outline),
           tooltip: 'Hapus yang dipilih',
           onPressed: _deleteSelected,
         ),
@@ -314,19 +320,67 @@ class _CollectionScreenState extends State<CollectionScreen> {
     );
   }
 
+  // Judul besar, ringkasan jumlah, dan chip total item.
+  Widget _buildHeader() {
+    final coins = _coins.where((c) => c.type == 'coin').length;
+    final notes = _coins.length - coins;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Koleksi',
+                  style: AppText.serif(size: 36, weight: FontWeight.w700),
+                ),
+                Text(
+                  '$coins koin · $notes uang kertas',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.ink.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.tileActive,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              '${_coins.length} item',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.bronze,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 4, 4),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Cari negara, nominal, atau tahun',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
+              decoration: appInput(
+                hint: 'Cari negara, nominal, tahun',
+                icon: Icons.search,
+                radius: 30,
+                suffix: _searchController.text.isEmpty
                     ? null
                     : IconButton(
                         icon: const Icon(Icons.clear),
@@ -340,13 +394,33 @@ class _CollectionScreenState extends State<CollectionScreen> {
               ),
             ),
           ),
-          IconButton(
-            tooltip: 'Filter dan urutan',
-            onPressed: _openFilter,
-            icon: Badge(
-              isLabelVisible: _filters.isActive,
-              smallSize: 8,
-              child: const Icon(Icons.tune),
+          const SizedBox(width: 10),
+          // Filter lanjutan (jenis, kondisi, tahun, urutan) tetap lewat lembar
+          // filter yang sama.
+          Material(
+            color: AppColors.card,
+            shape: const CircleBorder(
+              side: BorderSide(color: AppColors.cardBorder),
+            ),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _openFilter,
+              child: SizedBox(
+                width: 52,
+                height: 52,
+                // Center wajib: tanpa itu Badge meregang mengisi kotak 52x52
+                // dan ikonnya menempel di pojok kiri atas, bukan di tengah.
+                child: Center(
+                  child: Badge(
+                    isLabelVisible: _filters.isActive,
+                    smallSize: 10,
+                    // Titik penanda filter aktif berwarna cokelat tema. Warna
+                    // bawaan Badge merah (warna "galat").
+                    backgroundColor: AppColors.bronze,
+                    child: const Icon(Icons.tune, color: AppColors.bronze),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -368,15 +442,38 @@ class _CollectionScreenState extends State<CollectionScreen> {
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(32),
           children: [
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                searching
-                    ? 'Tidak ada koin yang cocok.'
-                    : 'Koleksi masih kosong.\nTekan tombol Tambah untuk mencatat koin pertamamu.',
-                textAlign: TextAlign.center,
+            const SizedBox(height: 24),
+            Center(
+              child: Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppGradients.brown,
+                  boxShadow: AppShadows.soft,
+                ),
+                child: Icon(
+                  searching ? Icons.search_off : Icons.collections_bookmark,
+                  size: 40,
+                  color: Colors.white,
+                ),
               ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              searching ? 'Tidak ada yang cocok' : 'Koleksi masih kosong',
+              textAlign: TextAlign.center,
+              style: AppText.serif(size: 22, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              searching
+                  ? 'Coba ubah kata kunci atau filternya.'
+                  : 'Tekan tombol Tambah untuk mencatat koin pertamamu.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.ink.withValues(alpha: 0.6)),
             ),
           ],
         ),
@@ -386,34 +483,67 @@ class _CollectionScreenState extends State<CollectionScreen> {
       onRefresh: _load,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(top: 4, bottom: 88),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 96),
         itemCount: _coins.length,
         itemBuilder: (context, i) {
           final coin = _coins[i];
           final selected = _selected.contains(coin.id);
-          final jenis = coin.type == 'banknote' ? 'Uang kertas' : 'Koin';
           final detail = [
-            jenis,
+            coin.country,
             if (coin.year != null) '${coin.year}',
             if (coin.condition != null) coin.condition!,
-          ].join(' • ');
-          return Card(
-            color: selected ? AppColors.gold.withValues(alpha: 0.35) : null,
-            child: ListTile(
-              leading: _thumbnail(coin),
-              title: Text(
-                '${coin.denominationLabel} ${coin.currencyCode} — ${coin.country}',
-              ),
-              subtitle: Text(detail),
-              trailing: _selecting
-                  ? Icon(
-                      selected ? Icons.check_circle : Icons.circle_outlined,
-                      color: AppColors.bronze,
-                    )
-                  : const Icon(Icons.chevron_right),
+          ].join(' · ');
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SoftCard(
+              color: selected ? AppColors.tileActive : null,
+              padding: const EdgeInsets.all(10),
               onTap: () => _onTap(coin),
-              // Tekan lama = masuk mode pilih dan langsung memilih koin ini.
-              onLongPress: () => _toggle(coin.id),
+              child: GestureDetector(
+                // Tekan lama = masuk mode pilih dan langsung memilih koin ini.
+                onLongPress: () => _toggle(coin.id),
+                behavior: HitTestBehavior.opaque,
+                child: Row(
+                  children: [
+                    _thumbnail(coin),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${coin.denominationLabel} ${coin.currencyCode}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.serif(
+                              size: 19,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            detail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.ink.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      _selecting
+                          ? (selected
+                                ? Icons.check_circle
+                                : Icons.circle_outlined)
+                          : Icons.chevron_right,
+                      color: _selecting ? AppColors.bronze : AppColors.ink,
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         },
@@ -434,6 +564,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
         appBar: _buildAppBar(),
         body: Column(
           children: [
+            _buildHeader(),
             _buildSearchBar(),
             Expanded(child: _buildList()),
           ],

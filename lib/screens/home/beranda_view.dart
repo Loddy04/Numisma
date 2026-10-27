@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 import '../../core/format_util.dart';
 import '../../core/time_util.dart';
 import '../../models/event.dart';
-import '../../services/rates_service.dart';
 import '../../theme.dart';
 import '../../widgets/app_logo.dart';
 
@@ -23,15 +22,12 @@ class BerandaView extends StatelessWidget {
   final int coinCount;
   final int banknoteCount;
   final bool statsLoaded;
-  // Nilai nominal setara seluruh koleksi dalam IDR; null = belum tersedia.
-  final CollectionValue? value;
   // Acara terdekat: jumlah acara yang belum mulai dan yang paling dekat
   // waktunya (null = tidak ada).
   final int upcomingCount;
   final Event? nextEvent;
   final bool eventsLoaded;
   final VoidCallback onOpenEvents; // ketuk kartu acara terdekat
-  final VoidCallback onOpenEventList; // ketuk "+N lainnya"
   final Future<void> Function() onRefresh;
   // Dipanggil dengan label menu yang diketuk.
   final ValueChanged<String> onOpen;
@@ -43,12 +39,10 @@ class BerandaView extends StatelessWidget {
     required this.coinCount,
     required this.banknoteCount,
     required this.statsLoaded,
-    required this.value,
     required this.upcomingCount,
     required this.nextEvent,
     required this.eventsLoaded,
     required this.onOpenEvents,
-    required this.onOpenEventList,
     required this.onRefresh,
     required this.onOpen,
   });
@@ -116,7 +110,7 @@ class BerandaView extends StatelessWidget {
             const SizedBox(height: 16),
             _heroCard(),
             const SizedBox(height: 18),
-            _eventHeader(),
+            _sectionTitle('Acara terdekat'),
             const SizedBox(height: 10),
             _eventCard(),
             const SizedBox(height: 18),
@@ -190,10 +184,6 @@ class BerandaView extends StatelessWidget {
   Widget _heroInk() {
     final total = coinCount + banknoteCount;
     String n(int v) => statsLoaded ? '$v' : '–';
-    final v = value;
-    final valueText = (v == null || v.counted == 0)
-        ? '–'
-        : '≈ Rp ${_rupiah(v.total)}';
 
     return Material(
       color: Colors.transparent,
@@ -229,13 +219,6 @@ class BerandaView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Halo,',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withValues(alpha: 0.8),
-                        ),
-                      ),
                       Text(
                         username,
                         maxLines: 1,
@@ -287,33 +270,6 @@ class BerandaView extends StatelessWidget {
                           _chip('${n(banknoteCount)} uang kertas'),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Container(
-                        height: 1,
-                        color: Colors.white.withValues(alpha: 0.25),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Nilai nominal setara',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.8),
-                            ),
-                          ),
-                          Text(
-                            valueText,
-                            style: AppText.serif(
-                              size: 20,
-                              weight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
@@ -340,33 +296,6 @@ class BerandaView extends StatelessWidget {
           color: Colors.white,
         ),
       ),
-    );
-  }
-
-  // "Acara terdekat" di kiri, "+N lainnya" di kanan bila ada lebih dari satu.
-  Widget _eventHeader() {
-    final more = upcomingCount - 1;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _sectionTitle('Acara terdekat'),
-        if (more > 0)
-          InkWell(
-            onTap: onOpenEventList,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text(
-                '+$more lainnya',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.bronze,
-                ),
-              ),
-            ),
-          ),
-      ],
     );
   }
 
@@ -578,17 +507,6 @@ class BerandaView extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  // 2400000.0 -> "2.400.000". Dibulatkan ke rupiah penuh.
-  static String _rupiah(double v) {
-    final digits = v.round().abs().toString();
-    final out = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) out.write('.');
-      out.write(digits[i]);
-    }
-    return out.toString();
   }
 }
 
