@@ -16,6 +16,11 @@ import '../../services/location_service.dart';
 import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../widgets/field_label.dart';
+import '../../widgets/gradient_button.dart';
+import '../../widgets/hero_card.dart';
+import '../../widgets/page_header.dart';
+import '../../widgets/soft_card.dart';
 import '../../widgets/zone_picker.dart';
 import 'event_form_screen.dart';
 import 'reminder_picker.dart';
@@ -189,163 +194,219 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Widget build(BuildContext context) {
     final event = _event;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detail acara'),
-        actions: [
-          if (event != null) ...[
-            IconButton(
-              tooltip: 'Ubah',
-              icon: const Icon(Icons.edit),
-              onPressed: _edit,
-            ),
-            IconButton(
-              tooltip: 'Hapus',
-              icon: const Icon(Icons.delete),
-              onPressed: _delete,
-            ),
-          ],
-        ],
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.page),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                child: PageHeader(
+                  title: 'Detail acara',
+                  trailing: event == null
+                      ? null
+                      : TextButton(
+                          onPressed: _edit,
+                          child: const Text(
+                            'Ubah',
+                            style: TextStyle(fontSize: 17),
+                          ),
+                        ),
+                ),
+              ),
+              Expanded(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : event == null
+                    ? const Center(child: Text('Acara tidak ditemukan.'))
+                    : _buildBody(event),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : event == null
-          ? const Center(child: Text('Acara tidak ditemukan.'))
-          : _buildBody(event),
     );
   }
 
   Widget _buildBody(Event event) {
     final past = event.startUtc.isBefore(DateTime.now().toUtc());
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    final muted = AppColors.ink.withValues(alpha: 0.6);
+    return Column(
       children: [
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  event.title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                if (event.location != null) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.place, size: 16, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Expanded(child: Text(event.location!)),
-                    ],
-                  ),
-                ],
-                if (past)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
-                      'Sudah lewat',
-                      style: TextStyle(fontSize: 12, color: AppColors.danger),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                // Waktu mulai di zona yang dipilih, sama seperti kartu daftar.
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            children: [
+              // Kartu hero: nama, tempat, dan waktu mulai besar di zona pilihan.
+              HeroCard(
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      formatZoneTime(event.startUtc, _zone),
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.bronze,
+                      event.title,
+                      style: AppText.serif(
+                        size: 32,
+                        weight: FontWeight.w700,
+                        color: AppColors.creamTop,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${formatZoneDate(event.startUtc, _zone)} · '
-                      '${zoneAbbreviation(event.startUtc, _zone)}',
+                    if (event.location != null &&
+                        event.location!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 18,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              event.location!,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (past)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Sudah lewat',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 22),
+                    // Waktu mulai di zona yang dipilih, sama seperti kartu
+                    // daftar.
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          formatZoneTime(event.startUtc, _zone),
+                          style: AppText.serif(
+                            size: 60,
+                            weight: FontWeight.w700,
+                            color: AppColors.creamTop,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(
+                            '${zoneAbbreviation(event.startUtc, _zone)} · '
+                            '${formatZoneDate(event.startUtc, _zone)}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                ZonePicker(
-                  selected: _zone,
-                  onSelected: (z) => setState(() => _zone = z),
-                ),
+              ),
+              const SizedBox(height: 14),
+              ZonePicker(
+                selected: _zone,
+                onSelected: (z) => setState(() => _zone = z),
+              ),
+              const SizedBox(height: 16),
+              if (event.hasPoint) ...[
+                _locationCard(event, muted),
+                const SizedBox(height: 12),
               ],
-            ),
+              _textCard('Catatan', event.note ?? 'Tidak ada catatan.'),
+              const SizedBox(height: 12),
+              _reminderCard(event),
+            ],
           ),
         ),
-        if (event.hasPoint) ...[
-          const SizedBox(height: 12),
-          _locationCard(event),
-        ],
-        const SizedBox(height: 12),
-        _reminderCard(event),
-        const SizedBox(height: 12),
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Catatan',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+        // Aksi utama selalu di dasar layar.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (event.hasPoint) ...[
+                GradientButton(
+                  label: 'Rute di Google Maps',
+                  icon: Icons.navigation_outlined,
+                  onPressed: () => _openRoute(event),
                 ),
-                const SizedBox(height: 4),
-                Text(event.note ?? 'Tidak ada catatan.'),
+                const SizedBox(height: 12),
               ],
-            ),
+              OutlinedButton.icon(
+                onPressed: _delete,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.danger,
+                  side: BorderSide(
+                    color: AppColors.danger.withValues(alpha: 0.4),
+                  ),
+                ),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Hapus acara'),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  // Kartu lokasi (hanya untuk acara bertitik): koordinat, jarak dari
-  // posisimu bila sudah diketahui, dan tombol Rute.
-  Widget _locationCard(Event event) {
-    final distance = _distance;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+  // Kartu teks dengan label kecil huruf kapital di atasnya.
+  Widget _textCard(String label, String text) {
+    return SoftCard(
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+      child: SizedBox(
+        width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Lokasi di peta',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 4),
+            FieldLabel(label),
+            Text(text, style: const TextStyle(fontSize: 16, height: 1.4)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Kartu lokasi (hanya untuk acara bertitik): koordinat dan jarak dari
+  // posisimu bila sudah diketahui. Tombol Rute ada di dasar layar.
+  Widget _locationCard(Event event, Color muted) {
+    final distance = _distance;
+    return SoftCard(
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const FieldLabel('Lokasi di peta'),
             Text(
               '${event.lat!.toStringAsFixed(5)}, '
               '${event.lng!.toStringAsFixed(5)}',
+              style: const TextStyle(fontSize: 16),
             ),
             if (distance != null) ...[
               const SizedBox(height: 4),
               Text(
                 '${formatDistance(distance)} dari posisimu',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.bronze,
-                ),
+                style: const TextStyle(fontSize: 15, color: AppColors.bronze),
               ),
             ],
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: () => _openRoute(event),
-              icon: const Icon(Icons.directions),
-              label: const Text('Rute'),
-            ),
           ],
         ),
       ),
@@ -354,7 +415,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   // Keadaan pengingat diturunkan dari waktu (baris `reminders` tidak
   // dihapus sendiri setelah notifikasi berbunyi):
-  //   acara sudah mulai          -> tidak ada tombol
+  //   acara sudah mulai          -> tanpa tombol
   //   belum ada pengingat        -> "Ingatkan saya"
   //   pengingat di masa depan    -> info + Ganti + Batalkan
   //   pengingat sudah lewat      -> "Pengingat sudah lewat" + "Ingatkan lagi"
@@ -363,66 +424,78 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final started = !event.startUtc.isAfter(now);
     final remindAt = _remindAt;
 
-    final String text;
+    final String title;
+    final String? subtitle;
     final List<Widget> actions;
     if (started) {
-      text = 'Acara sudah dimulai, pengingat tidak tersedia.';
+      title = 'Acara sudah dimulai';
+      subtitle = 'Pengingat tidak tersedia.';
       actions = const [];
     } else if (remindAt == null) {
-      text = 'Belum ada pengingat.';
+      title = 'Belum ada pengingat';
+      subtitle = null;
       actions = [
-        FilledButton.icon(
+        TextButton(
           onPressed: _busy ? null : _setReminder,
-          icon: const Icon(Icons.notifications_active),
-          label: const Text('Ingatkan saya'),
+          child: const Text('Ingatkan saya'),
         ),
       ];
     } else if (remindAt.isAfter(now)) {
       final before = formatDuration(event.startUtc.difference(remindAt));
-      text =
-          'Pengingat: $before sebelum acara\n'
-          'Berbunyi ${formatZone(remindAt, _zone)}';
+      title = '$before sebelum';
+      subtitle = 'Berbunyi ${formatZone(remindAt, _zone)}';
       actions = [
-        OutlinedButton(
+        TextButton(
           onPressed: _busy ? null : _setReminder,
           child: const Text('Ganti'),
         ),
-        OutlinedButton(
+        TextButton(
           onPressed: _busy ? null : _cancelReminder,
+          style: TextButton.styleFrom(foregroundColor: AppColors.danger),
           child: const Text('Batalkan'),
         ),
       ];
     } else {
       final before = formatDuration(event.startUtc.difference(remindAt));
-      text = 'Pengingat sudah lewat ($before sebelum acara).';
+      title = 'Pengingat sudah lewat';
+      subtitle = '$before sebelum acara';
       actions = [
-        FilledButton.icon(
+        TextButton(
           onPressed: _busy ? null : _setReminder,
-          icon: const Icon(Icons.notifications_active),
-          label: const Text('Ingatkan lagi'),
+          child: const Text('Ingatkan lagi'),
         ),
       ];
     }
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Pengingat',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+    return SoftCard(
+      radius: 24,
+      padding: const EdgeInsets.fromLTRB(18, 12, 10, 12),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.notifications_none,
+            color: AppColors.bronze,
+            size: 28,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 17)),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.ink.withValues(alpha: 0.6),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(text),
-            if (actions.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8, children: actions),
-            ],
-          ],
-        ),
+          ),
+          ...actions,
+        ],
       ),
     );
   }

@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/format_util.dart';
+import '../../theme.dart';
+import '../../widgets/soft_card.dart';
 
 const _presets = [
   Duration(minutes: 5),
@@ -22,35 +24,64 @@ Future<Duration?> pickReminderOffset(BuildContext context) {
   return showModalBottomSheet<Duration>(
     context: context,
     builder: (ctx) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               'Ingatkan berapa lama sebelum acara?',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: AppText.serif(size: 22, weight: FontWeight.w700),
             ),
-          ),
-          for (final p in _presets)
-            ListTile(
-              title: Text('${formatDuration(p)} sebelum'),
-              onTap: () => Navigator.of(ctx).pop(p),
+            const SizedBox(height: 14),
+            for (final p in _presets)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: SoftCard(
+                  radius: 20,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  onTap: () => Navigator.of(ctx).pop(p),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.notifications_none,
+                        color: AppColors.bronze,
+                      ),
+                      const SizedBox(width: 14),
+                      Text(
+                        '${formatDuration(p)} sebelum',
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            SoftCard(
+              radius: 20,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              onTap: () async {
+                final custom = await showDialog<Duration>(
+                  context: ctx,
+                  builder: (_) => const _CustomOffsetDialog(),
+                );
+                if (custom != null && ctx.mounted) {
+                  Navigator.of(ctx).pop(custom);
+                }
+              },
+              child: const Row(
+                children: [
+                  Icon(Icons.edit_outlined, color: AppColors.bronze),
+                  SizedBox(width: 14),
+                  Text('Atur sendiri…', style: TextStyle(fontSize: 16)),
+                ],
+              ),
             ),
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: const Text('Atur sendiri…'),
-            onTap: () async {
-              final custom = await showDialog<Duration>(
-                context: ctx,
-                builder: (_) => const _CustomOffsetDialog(),
-              );
-              if (custom != null && ctx.mounted) {
-                Navigator.of(ctx).pop(custom);
-              }
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

@@ -18,6 +18,10 @@ import '../../services/coin_repo.dart';
 import '../../services/rates_service.dart';
 import '../../theme.dart';
 import '../../widgets/currency_picker.dart';
+import '../../widgets/field_label.dart';
+import '../../widgets/hero_card.dart';
+import '../../widgets/page_header.dart';
+import '../../widgets/soft_card.dart';
 
 class ConvertScreen extends StatefulWidget {
   const ConvertScreen({super.key});
@@ -142,20 +146,35 @@ class _ConvertScreenState extends State<ConvertScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Konversi')),
-      body: RefreshIndicator(
-        onRefresh: () => _load(force: true),
-        child: ListView(
-          // Selalu bisa ditarik, walau isinya pendek.
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          children: _buildBody(),
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.page),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: PageHeader(title: 'Konversi'),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => _load(force: true),
+                  child: ListView(
+                    // Selalu bisa ditarik, walau isinya pendek.
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
+                    children: _buildBody(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   List<Widget> _buildBody() {
+    final muted = AppColors.ink.withValues(alpha: 0.6);
     if (_loading) {
       return const [Center(child: CircularProgressIndicator())];
     }
@@ -163,28 +182,23 @@ class _ConvertScreenState extends State<ConvertScreen> {
       return [Text(_error!, style: const TextStyle(color: AppColors.danger))];
     }
     if (_coins.isEmpty) {
-      return const [
-        Text('Koleksimu masih kosong. Tambahkan koin di menu Koleksi.'),
+      return [
+        Text(
+          'Koleksimu masih kosong. Tambahkan koin di menu Koleksi.',
+          style: TextStyle(color: muted),
+        ),
       ];
     }
     return [
-      const Text(
-        'Konversi koleksi',
-        style: TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textDark,
-        ),
-      ),
-      const SizedBox(height: 2),
-      const Text(
+      Text(
         'Pilih mata uang tujuan, lalu pilih koin yang ingin dilihat nilainya. '
         'Tekan "Pilih semua" untuk total seluruh koleksi.',
-        style: TextStyle(fontSize: 12, color: Colors.grey),
+        style: TextStyle(fontSize: 14, height: 1.4, color: muted),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 16),
+      const FieldLabel('Konversi ke'),
       CurrencyPickerField(
-        label: 'Konversi ke',
+        label: 'Pilih mata uang',
         initialCode: _target,
         required: true,
         onChanged: (code) {
@@ -193,8 +207,9 @@ class _ConvertScreenState extends State<ConvertScreen> {
           _loadRates();
         },
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: 16),
       _summaryCard(),
+      const SizedBox(height: 14),
       Row(
         children: [
           Expanded(
@@ -202,49 +217,85 @@ class _ConvertScreenState extends State<ConvertScreen> {
               _selected.isEmpty
                   ? '${_coins.length} item'
                   : '${_selected.length} dari ${_coins.length} dipilih',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 14, color: muted),
             ),
           ),
           if (_ratesLoading)
             const Padding(
-              padding: EdgeInsets.only(right: 8),
+              padding: EdgeInsets.only(right: 10),
               child: SizedBox(
                 width: 14,
                 height: 14,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-          TextButton(
-            onPressed: _toggleAll,
-            child: Text(
-              _selected.length == _coins.length
-                  ? 'Hapus pilihan'
-                  : 'Pilih semua',
+          Material(
+            color: AppColors.card,
+            shape: const StadiumBorder(
+              side: BorderSide(color: AppColors.cardBorder),
+            ),
+            child: InkWell(
+              customBorder: const StadiumBorder(),
+              onTap: _toggleAll,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Text(
+                  _selected.length == _coins.length
+                      ? 'Hapus pilihan'
+                      : 'Pilih semua',
+                  style: const TextStyle(fontSize: 14, color: AppColors.bronze),
+                ),
+              ),
             ),
           ),
         ],
       ),
+      const SizedBox(height: 10),
       for (final c in _coins) _coinRow(c),
-      const SizedBox(height: 16),
-      const Text(
+      const SizedBox(height: 14),
+      Text(
         'Nilai nominal setara berdasarkan kurs referensi Frankfurter, bukan '
         'harga pasar kolektor. Diperbarui pada hari kerja.',
-        style: TextStyle(fontSize: 12, color: Colors.grey),
+        style: TextStyle(fontSize: 12, height: 1.4, color: muted),
       ),
     ];
   }
 
-  // Jumlah koin yang dipilih dalam mata uang tujuan, beserta keterangan kurs.
+  // Jumlah koin yang dipilih dalam mata uang tujuan, beserta keterangan kurs,
+  // di kartu hero bergradasi.
   Widget _summaryCard() {
+    final light = Colors.white.withValues(alpha: 0.8);
     if (_selected.isEmpty) {
-      return const Card(
-        margin: EdgeInsets.only(bottom: 8),
-        child: Padding(
-          padding: EdgeInsets.all(12),
-          child: Text(
-            'Belum ada koin dipilih.',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
-          ),
+      return HeroCard(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'TOTAL TERPILIH',
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 2,
+                color: Color(0xFFE6CFA3),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '–',
+              style: AppText.serif(
+                size: 48,
+                weight: FontWeight.w700,
+                color: AppColors.creamTop,
+              ),
+            ),
+            Text(
+              'Belum ada koin dipilih.',
+              style: TextStyle(fontSize: 14, color: light),
+            ),
+          ],
         ),
       );
     }
@@ -268,46 +319,74 @@ class _ConvertScreenState extends State<ConvertScreen> {
       }
     }
     final skipped = chosen.length - counted;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      color: AppColors.latte,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Total terpilih (${chosen.length} item)',
-              style: const TextStyle(fontSize: 12),
+    return HeroCard(
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'TOTAL TERPILIH (${chosen.length} ITEM)',
+            style: const TextStyle(
+              fontSize: 12,
+              letterSpacing: 2,
+              color: Color(0xFFE6CFA3),
             ),
-            const SizedBox(height: 2),
+          ),
+          const SizedBox(height: 6),
+          // Tidak ada satu pun kurs yang didapat: jangan tampilkan "0".
+          if (counted == 0)
             Text(
-              // Tidak ada satu pun kurs yang didapat: jangan tampilkan "0".
-              counted == 0
-                  ? (_ratesLoading ? 'Menghitung…' : 'Tidak tersedia')
-                  : '≈ ${formatNumber(sum)} $_target',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.bronze,
+              _ratesLoading ? 'Menghitung…' : 'Tidak tersedia',
+              style: AppText.serif(
+                size: 34,
+                weight: FontWeight.w700,
+                color: AppColors.creamTop,
               ),
+            )
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '≈ ${formatNumber(sum)}',
+                      style: AppText.serif(
+                        size: 44,
+                        weight: FontWeight.w700,
+                        color: AppColors.creamTop,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(_target, style: TextStyle(fontSize: 18, color: light)),
+              ],
             ),
-            if (skipped > 0)
-              Text(
+          if (skipped > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
                 '$skipped item tidak dihitung karena kursnya tidak tersedia.',
-                style: const TextStyle(fontSize: 12, color: AppColors.danger),
+                style: const TextStyle(fontSize: 13, color: Color(0xFFFFB4A8)),
               ),
-            if (oldest != null)
-              Text(
+            ),
+          if (oldest != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
                 'Tanggal kurs: ${formatRateDate(oldest)}'
                 '${anyFromCache ? ' (sebagian dari cache, internet tidak terjangkau)' : ''}',
                 style: TextStyle(
-                  fontSize: 12,
-                  color: anyFromCache ? AppColors.danger : Colors.grey,
+                  fontSize: 13,
+                  color: anyFromCache ? const Color(0xFFFFB4A8) : light,
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -320,46 +399,51 @@ class _ConvertScreenState extends State<ConvertScreen> {
       if (c.year != null) '${c.year}',
       c.type == 'banknote' ? 'uang kertas' : 'koin',
     ].join(' · ');
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: SoftCard(
+        radius: 22,
+        color: selected ? AppColors.tileActive : null,
+        padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
         onTap: () => _toggle(c.id),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            children: [
-              Checkbox(value: selected, onChanged: (_) => _toggle(c.id)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${c.denominationLabel} ${c.currencyCode}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.check_circle : Icons.circle_outlined,
+              color: AppColors.bronze,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${c.denominationLabel} ${c.currencyCode}',
+                    style: AppText.serif(size: 18, weight: FontWeight.w700),
+                  ),
+                  Text(
+                    detail,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.ink.withValues(alpha: 0.6),
                     ),
-                    Text(
-                      detail,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                value == null
-                    ? (_ratesLoading ? '…' : '—')
-                    : '≈ ${formatNumber(value)} $_target',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: value == null ? Colors.grey : AppColors.bronze,
-                ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              value == null
+                  ? (_ratesLoading ? '…' : '—')
+                  : '≈ ${formatNumber(value)} $_target',
+              style: TextStyle(
+                fontSize: 15,
+                color: value == null ? Colors.grey : AppColors.bronze,
               ),
-              const SizedBox(width: 8),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

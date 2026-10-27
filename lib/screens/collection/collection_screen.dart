@@ -20,7 +20,6 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/field_label.dart';
 import '../../widgets/soft_card.dart';
 import 'coin_detail_screen.dart';
-import 'coin_form_screen.dart';
 import 'collection_filter_sheet.dart';
 
 class CollectionScreen extends StatefulWidget {
@@ -36,7 +35,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
   final _searchController = TextEditingController();
 
 
-  int? _userId;
   List<Coin> _coins = [];
   bool _loading = true;
 
@@ -91,7 +89,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
       );
       if (!mounted || myLoad != _loadId) return;
       setState(() {
-        _userId = user.id;
         _coins = coins;
         _loading = false;
         // Buang pilihan untuk koin yang tidak lagi tampil di daftar.
@@ -126,14 +123,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
     );
     if (result == null) return;
     setState(() => _filters = result);
-    _load();
-  }
-
-  Future<void> _openForm() async {
-    if (_userId == null) return;
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => CoinFormScreen(userId: _userId!)),
-    );
     _load();
   }
 
@@ -445,7 +434,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
             Text(
               searching
                   ? 'Coba ubah kata kunci atau filternya.'
-                  : 'Tekan tombol Tambah untuk mencatat koin pertamamu.',
+                  : 'Gunakan tombol Scan untuk mencatat koin pertamamu.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.ink.withValues(alpha: 0.6)),
             ),
@@ -543,13 +532,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
             Expanded(child: _buildList()),
           ],
         ),
-        floatingActionButton: _selecting
-            ? null
-            : FloatingActionButton.extended(
-                onPressed: _openForm,
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah'),
-              ),
       ),
     );
   }

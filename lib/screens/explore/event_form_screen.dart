@@ -14,6 +14,9 @@ import '../../services/event_repo.dart';
 import '../../services/notif_service.dart';
 import '../../theme.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../widgets/field_label.dart';
+import '../../widgets/gradient_button.dart';
+import '../../widgets/page_header.dart';
 import 'location_picker_screen.dart';
 
 // Hasil yang dikembalikan form ke layar pemanggil.
@@ -241,21 +244,22 @@ class _EventFormScreenState extends State<EventFormScreen> {
   // Kotak pilihan tanggal/jam yang tampil seperti isian lain.
   Widget _pickerBox({
     required String label,
+    required String hint,
     required String? value,
     required VoidCallback onTap,
     required IconData icon,
   }) {
     final missing = _submitted && value == null;
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          errorText: missing ? '$label wajib dipilih.' : null,
-          suffixIcon: Icon(icon),
-        ),
-        child: Text(value ?? ' '),
+        isEmpty: value == null,
+        decoration: appInput(
+          hint: hint,
+          suffix: Icon(icon, color: AppColors.bronze),
+        ).copyWith(errorText: missing ? '$label wajib dipilih.' : null),
+        child: Text(value ?? '', style: const TextStyle(fontSize: 16)),
       ),
     );
   }
@@ -265,100 +269,112 @@ class _EventFormScreenState extends State<EventFormScreen> {
     final date = _date;
     final time = _time;
     return Scaffold(
-      appBar: AppBar(title: Text(_editing ? 'Ubah acara' : 'Tambah acara')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _titleController,
-              maxLength: 60,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Nama acara'),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Nama acara wajib diisi.'
-                  : null,
-            ),
-            const SizedBox(height: 4),
-            TextFormField(
-              controller: _locationController,
-              maxLength: 80,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Lokasi (opsional)'),
-            ),
-            const SizedBox(height: 4),
-            // Titik di peta (opsional): acara bertitik tampil di tab Peta
-            // Jelajah dengan jarak dari posisi pengguna.
-            OutlinedButton.icon(
-              onPressed: _saving ? null : _pickPoint,
-              icon: const Icon(Icons.pin_drop_outlined),
-              label: Text(
-                _point == null
-                    ? 'Pilih titik di peta (opsional)'
-                    : 'Titik: ${_point!.latitude.toStringAsFixed(5)}, '
-                          '${_point!.longitude.toStringAsFixed(5)} · ubah',
-              ),
-            ),
-            const SizedBox(height: 16),
-            _pickerBox(
-              label: 'Tanggal',
-              value: date == null
-                  ? null
-                  : '${date.day} ${monthNamesId[date.month - 1]} ${date.year}',
-              onTap: _pickDate,
-              icon: Icons.calendar_today,
-            ),
-            const SizedBox(height: 16),
-            _pickerBox(
-              label: 'Jam (WIB)',
-              value: time == null
-                  ? null
-                  : '${time.hour.toString().padLeft(2, '0')}:'
-                        '${time.minute.toString().padLeft(2, '0')}',
-              onTap: _pickTime,
-              icon: Icons.access_time,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Waktu dalam WIB. Di daftar acara kamu bisa melihatnya di WITA, WIT, atau London.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _noteController,
-              maxLength: 500,
-              minLines: 3,
-              maxLines: 6,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Catatan (opsional)',
-                alignLabelWithHint: true,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: _saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Simpan'),
-            ),
-            if (_editing) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _saving ? null : _delete,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Hapus acara'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.danger,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.page),
+        child: SafeArea(
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              children: [
+                PageHeader(title: _editing ? 'Ubah acara' : 'Tambah acara'),
+                const SizedBox(height: 20),
+                const FieldLabel('Nama acara'),
+                TextFormField(
+                  controller: _titleController,
+                  maxLength: 60,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: appInput(hint: 'mis. Pameran Uang Kuno'),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Nama acara wajib diisi.'
+                      : null,
                 ),
-              ),
-            ],
-          ],
+                const SizedBox(height: 8),
+                const FieldLabel('Lokasi'),
+                TextFormField(
+                  controller: _locationController,
+                  maxLength: 80,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: appInput(hint: 'Opsional'),
+                ),
+                const SizedBox(height: 8),
+                // Titik di peta (opsional): acara bertitik tampil di tab Peta
+                // Jelajah dengan jarak dari posisi pengguna.
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : _pickPoint,
+                  icon: const Icon(Icons.pin_drop_outlined),
+                  label: Text(
+                    _point == null
+                        ? 'Pilih titik di peta (opsional)'
+                        : 'Titik: ${_point!.latitude.toStringAsFixed(5)}, '
+                              '${_point!.longitude.toStringAsFixed(5)} · ubah',
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const FieldLabel('Tanggal'),
+                _pickerBox(
+                  label: 'Tanggal',
+                  hint: 'Pilih tanggal',
+                  value: date == null
+                      ? null
+                      : '${date.day} ${monthNamesId[date.month - 1]} ${date.year}',
+                  onTap: _pickDate,
+                  icon: Icons.calendar_today_outlined,
+                ),
+                const SizedBox(height: 16),
+                const FieldLabel('Jam (WIB)'),
+                _pickerBox(
+                  label: 'Jam',
+                  hint: 'Pilih jam',
+                  value: time == null
+                      ? null
+                      : '${time.hour.toString().padLeft(2, '0')}:'
+                            '${time.minute.toString().padLeft(2, '0')}',
+                  onTap: _pickTime,
+                  icon: Icons.access_time,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Waktu dalam WIB. Di daftar acara kamu bisa melihatnya di '
+                  'WITA, WIT, atau London.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.ink.withValues(alpha: 0.55),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const FieldLabel('Catatan'),
+                TextFormField(
+                  controller: _noteController,
+                  maxLength: 500,
+                  minLines: 3,
+                  maxLines: 6,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: appInput(hint: 'Opsional', radius: 24),
+                ),
+                const SizedBox(height: 20),
+                GradientButton(
+                  label: 'Simpan',
+                  loading: _saving,
+                  onPressed: _saving ? null : _save,
+                ),
+                if (_editing) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _delete,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Hapus acara'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: BorderSide(
+                        color: AppColors.danger.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -14,10 +14,12 @@ import '../../services/auth_service.dart';
 import '../../services/event_repo.dart';
 import '../../services/notif_service.dart';
 import '../../theme.dart';
+import '../../widgets/soft_card.dart';
 import '../../widgets/world_clock_card.dart';
 import '../../widgets/zone_picker.dart';
 import 'event_detail_screen.dart';
 import 'event_form_screen.dart';
+import 'explore_screen.dart';
 
 class EventsTab extends StatefulWidget {
   const EventsTab({super.key});
@@ -96,45 +98,79 @@ class _EventsTabState extends State<EventsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _loadEvents,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Jam dunia di atas daftar, supaya waktu acara mudah dibandingkan
-          // dengan waktu sekarang di tiap zona.
-          const WorldClockCard(),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Acara kolektor',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
+    // Kepala melayang (tombol kembali + tab) dipasang ExploreScreen di atas
+    // daftar ini, jadi daftar dimulai di bawahnya.
+    final top = MediaQuery.of(context).padding.top + ExploreScreen.headerHeight;
+    return Container(
+      decoration: const BoxDecoration(gradient: AppGradients.page),
+      child: RefreshIndicator(
+        onRefresh: _loadEvents,
+        edgeOffset: top,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(20, top + 4, 20, 32),
+          children: [
+            // Jam dunia di atas daftar, supaya waktu acara mudah dibandingkan
+            // dengan waktu sekarang di tiap zona.
+            const WorldClockCard(),
+            const SizedBox(height: 26),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Acara kolektor',
+                    style: AppText.serif(size: 24, weight: FontWeight.w700),
                   ),
                 ),
-              ),
-              TextButton.icon(
-                onPressed: _userId == null ? null : _openForm,
-                icon: const Icon(Icons.add),
-                label: const Text('Tambah acara'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_loading)
-            const Center(child: CircularProgressIndicator())
-          else if (_list.isEmpty)
-            const Text('Belum ada acara.')
-          else
-            for (final e in _list) _eventCard(e),
-          const SizedBox(height: 16),
-          _testSection(),
-        ],
+                Material(
+                  color: AppColors.card,
+                  shape: const StadiumBorder(
+                    side: BorderSide(color: AppColors.cardBorder),
+                  ),
+                  child: InkWell(
+                    customBorder: const StadiumBorder(),
+                    onTap: _userId == null ? null : _openForm,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 18, color: AppColors.bronze),
+                          SizedBox(width: 4),
+                          Text(
+                            'Tambah acara',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.bronze,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_list.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Belum ada acara.',
+                  style: TextStyle(color: AppColors.ink.withValues(alpha: 0.6)),
+                ),
+              )
+            else
+              for (final e in _list) _eventCard(e),
+            const SizedBox(height: 14),
+            _testSection(),
+          ],
+        ),
       ),
     );
   }
@@ -176,21 +212,22 @@ class _EventsTabState extends State<EventsTab> {
   }
 
   Widget _testSection() {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return SoftCard(
+      radius: 24,
+      padding: const EdgeInsets.all(16),
+      child: SizedBox(
+        width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Uji notifikasi',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
+            const Text('Uji notifikasi', style: TextStyle(fontSize: 17)),
+            const SizedBox(height: 2),
+            Text(
               'Untuk memastikan notifikasi berfungsi di HP ini.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.ink.withValues(alpha: 0.6),
+              ),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -198,13 +235,19 @@ class _EventsTabState extends State<EventsTab> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                  ),
                   onPressed: _testNow,
-                  icon: const Icon(Icons.notifications_active),
+                  icon: const Icon(Icons.notifications_active_outlined),
                   label: const Text('Kirim sekarang'),
                 ),
                 OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                  ),
                   onPressed: _testIn10s,
-                  icon: const Icon(Icons.timer),
+                  icon: const Icon(Icons.timer_outlined),
                   label: const Text('Uji dalam 10 detik'),
                 ),
               ],
@@ -225,22 +268,22 @@ class _EventsTabState extends State<EventsTab> {
     }
     final active = remindAt.isAfter(nowUtc);
     final before = formatDuration(e.startUtc.difference(remindAt));
+    final color = active ? AppColors.bronze : Colors.grey;
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 10),
       child: Row(
         children: [
           Icon(
-            active ? Icons.notifications_active : Icons.notifications_off,
+            active
+                ? Icons.notifications_active_outlined
+                : Icons.notifications_off_outlined,
             size: 16,
-            color: active ? AppColors.bronze : Colors.grey,
+            color: color,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             active ? 'Pengingat: $before sebelum' : 'Pengingat sudah lewat',
-            style: TextStyle(
-              fontSize: 12,
-              color: active ? AppColors.bronze : Colors.grey,
-            ),
+            style: TextStyle(fontSize: 13, color: color),
           ),
         ],
       ),
@@ -251,53 +294,60 @@ class _EventsTabState extends State<EventsTab> {
     final nowUtc = DateTime.now().toUtc();
     final zone = _eventZone[e.id] ?? zoneWib;
     final past = e.startUtc.isBefore(nowUtc);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      // Clip supaya efek ketukan mengikuti sudut membulat kartu.
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
+    final muted = AppColors.ink.withValues(alpha: 0.6);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SoftCard(
+        radius: 24,
+        padding: const EdgeInsets.all(18),
         onTap: () => _openDetail(e),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: SizedBox(
+          width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 e.title,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: past ? Colors.grey : AppColors.textDark,
+                style: AppText.serif(
+                  size: 21,
+                  weight: FontWeight.w700,
+                  color: past ? Colors.grey : AppColors.ink,
                 ),
               ),
               if (e.location != null || e.hasPoint)
-                Row(
-                  children: [
-                    // Pin kecil menandai acara yang punya titik di peta.
-                    if (e.hasPoint)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 4),
-                        child: Icon(
-                          Icons.location_on,
-                          size: 14,
-                          color: AppColors.bronze,
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    children: [
+                      // Pin kecil menandai acara yang punya titik di peta.
+                      if (e.hasPoint)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 4),
+                          child: Icon(
+                            Icons.location_on_outlined,
+                            size: 16,
+                            color: AppColors.bronze,
+                          ),
                         ),
-                      ),
-                    if (e.location != null)
-                      Expanded(
-                        child: Text(
-                          e.location!,
-                          style: const TextStyle(fontSize: 12),
+                      if (e.location != null)
+                        Expanded(
+                          child: Text(
+                            e.location!,
+                            style: TextStyle(fontSize: 14, color: muted),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               if (past)
-                const Text(
-                  'Sudah lewat',
-                  style: TextStyle(fontSize: 12, color: AppColors.danger),
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Sudah lewat',
+                    style: TextStyle(fontSize: 13, color: AppColors.danger),
+                  ),
                 ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               // Waktu mulai di zona yang dipilih untuk kartu ini saja.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -305,21 +355,22 @@ class _EventsTabState extends State<EventsTab> {
                 children: [
                   Text(
                     formatZoneTime(e.startUtc, zone),
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+                    style: AppText.serif(
+                      size: 36,
+                      weight: FontWeight.w700,
                       color: AppColors.bronze,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Text(
                     '${formatZoneDate(e.startUtc, zone)} · '
                     '${zoneAbbreviation(e.startUtc, zone)}',
+                    style: TextStyle(fontSize: 14, color: muted),
                   ),
                 ],
               ),
               _reminderInfo(e, nowUtc),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               ZonePicker(
                 selected: zone,
                 onSelected: (z) => setState(() => _eventZone[e.id] = z),

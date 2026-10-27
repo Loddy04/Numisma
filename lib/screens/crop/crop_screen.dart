@@ -107,7 +107,7 @@ class _CropScreenState extends State<CropScreen> {
             onPressed: _cropping ? null : _done,
             child: const Text(
               'Selesai',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: AppColors.ink, fontSize: 16),
             ),
           ),
         ],

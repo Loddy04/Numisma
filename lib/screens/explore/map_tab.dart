@@ -2,28 +2,38 @@
 // Tab Peta di Jelajah (LBS, NUMISMA_GUIDE 7.5): posisi pengguna dari GPS,
 // penanda acara milik pengguna yang punya titik lokasi, dan daftar acara
 // terurut dari yang TERDEKAT lengkap dengan jaraknya. Mengetuk penanda atau
-// baris membuka detail acara.
+// baris membuka detail acara; tombol Rute membuka Google Maps.
 //
 // GPS di dalam ruangan bisa lemah, jadi pengguna dapat menekan lama pada peta
 // untuk menetapkan LOKASI MANUAL; jarak lalu dihitung dari titik itu. Acara
 // tanpa titik tidak tampil di sini (hanya di tab Acara).
+//
+// Tampilan: peta memenuhi layar, daftar "Terdekat dari kamu" berupa lembar
+// bawah yang bisa ditarik. Atribusi OpenStreetMap ditulis di kepala lembar
+// supaya selalu terlihat.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/geo_util.dart';
 import '../../core/time_util.dart';
+import '../../core/format_util.dart';
 import '../../models/event.dart';
 import '../../services/auth_service.dart';
 import '../../services/event_repo.dart';
 import '../../services/location_service.dart';
 import '../../theme.dart';
 import '../../widgets/event_map.dart';
+import '../../widgets/gradient_button.dart';
 import 'event_detail_screen.dart';
+import 'explore_screen.dart';
 
 class MapTab extends StatefulWidget {
-  const MapTab({super.key});
+  // Dipakai memuat ulang acara setiap pengguna kembali ke tab Peta.
+  final TabController? tabs;
+  const MapTab({super.key, this.tabs});
 
   @override
   State<MapTab> createState() => _MapTabState();
@@ -43,7 +53,6 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
 
   bool _mapReady = false;
   LatLng? _pendingCenter;
-  TabController? _tabs;
 
   // Peta dan daftar dipertahankan saat pengguna pindah ke tab Acara.
   @override
@@ -52,6 +61,7 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
   @override
   void initState() {
     super.initState();
+    widget.tabs?.addListener(_onTabChanged);
     _loadEvents();
     _locate();
   }
@@ -59,19 +69,8 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
   // Karena tab ini dipertahankan hidup, acara yang ditambah, diubah, atau
   // dihapus di tab Acara tidak otomatis terlihat di sini. Karena itu acara
   // dimuat ulang setiap pengguna kembali ke tab Peta.
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final tabs = DefaultTabController.maybeOf(context);
-    if (tabs != _tabs) {
-      _tabs?.removeListener(_onTabChanged);
-      _tabs = tabs;
-      _tabs?.addListener(_onTabChanged);
-    }
-  }
-
   void _onTabChanged() {
-    final tabs = _tabs;
+    final tabs = widget.tabs;
     if (tabs != null && !tabs.indexIsChanging && tabs.index == 0) {
       _loadEvents();
     }
@@ -79,13 +78,13 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
 
   @override
   void dispose() {
-    _tabs?.removeListener(_onTabChanged);
+    widget.tabs?.removeListener(_onTabChanged);
     _controller.dispose();
     super.dispose();
   }
 
-  // Segarkan manual (tombol atau tarik daftar): acara dimuat ulang, dan
-  // posisi GPS diambil lagi kecuali pengguna sedang memakai lokasi manual.
+  // Segarkan manual (tombol): acara dimuat ulang, dan posisi GPS diambil lagi
+  // kecuali pengguna sedang memakai lokasi manual.
   Future<void> _refresh() async {
     await _loadEvents();
     if (!_manual) await _locate();
@@ -165,6 +164,19 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
     _loadEvents();
   }
 
+  // Membuka Google Maps dengan petunjuk arah ke titik acara (Maps URLs).
+  Future<void> _openRoute(Event e) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}',
+    );
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) _snack('Tidak bisa membuka Google Maps.');
+    } catch (_) {
+      if (mounted) _snack('Tidak bisa membuka Google Maps.');
+    }
+  }
+
   // Pusat awal peta: acara bertitik pertama, atau Jogja.
   LatLng get _initialCenter {
     for (final e in _list) {
@@ -185,96 +197,120 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
   @override
   Widget build(BuildContext context) {
     super.build(context); // wajib untuk AutomaticKeepAliveClientMixin
-    return Column(
-      children: [
-        Expanded(flex: 5, child: _mapArea()),
-        if (_error != null) _errorBanner(),
-        Expanded(flex: 4, child: _nearbyList()),
-      ],
-    );
-  }
-
-  Widget _mapArea() {
+    final top = MediaQuery.of(context).padding.top + ExploreScreen.headerHeight;
     return Stack(
       children: [
-        EventMap(
-          controller: _controller,
-          center: _initialCenter,
-          zoom: 13,
-          markers: _markers(),
-          onLongPress: _setManual,
-          onReady: () {
-            _mapReady = true;
-            final pending = _pendingCenter;
-            if (pending != null) _controller.move(pending, 14);
-          },
-        ),
-        if (_manual)
-          Positioned(
-            top: 8,
-            left: 8,
-            child: ActionChip(
-              avatar: const Icon(Icons.pin_drop, size: 18),
-              label: const Text('Lokasi manual · pakai GPS'),
-              onPressed: _locate,
-            ),
+        Positioned.fill(
+          child: EventMap(
+            controller: _controller,
+            center: _initialCenter,
+            zoom: 13,
+            markers: _markers(),
+            showAttribution: false,
+            onLongPress: _setManual,
+            onReady: () {
+              _mapReady = true;
+              final pending = _pendingCenter;
+              if (pending != null) _controller.move(pending, 14);
+            },
           ),
+        ),
+        // Petunjuk atau status lokasi manual, di bawah kepala melayang.
+        Positioned(top: top, left: 20, child: _hintChip()),
         Positioned(
-          right: 12,
-          bottom: 28,
+          top: top,
+          right: 20,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              FloatingActionButton.small(
-                heroTag: 'map-refresh',
+              _roundButton(
+                icon: Icons.refresh,
                 tooltip: 'Segarkan peta',
-                onPressed: _refresh,
-                child: const Icon(Icons.refresh),
+                onTap: _refresh,
               ),
-              const SizedBox(height: 8),
-              FloatingActionButton.small(
-                heroTag: 'map-my-location',
+              const SizedBox(height: 10),
+              _roundButton(
+                icon: Icons.my_location,
                 tooltip: 'Lokasi saya',
-                onPressed: _locating ? null : _locate,
-                child: _locating
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.my_location),
+                onTap: _locating ? null : _locate,
+                loading: _locating,
               ),
             ],
           ),
         ),
+        _sheet(),
       ],
     );
   }
 
-  Widget _errorBanner() {
-    final forever = _error == LocationService.errDeniedForever;
+  Widget _hintChip() {
+    final manual = _manual;
     return Material(
-      color: AppColors.danger.withValues(alpha: 0.08),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline, size: 18, color: AppColors.danger),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(_error!, style: const TextStyle(fontSize: 12)),
-            ),
-            TextButton(
-              onPressed: forever ? _location.openAppSettings : _locate,
-              child: Text(forever ? 'Pengaturan' : 'Coba lagi'),
-            ),
-          ],
+      color: AppColors.card,
+      elevation: 2,
+      shadowColor: Colors.black26,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: manual ? _locate : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (manual) ...[
+                const Icon(Icons.pin_drop, size: 16, color: AppColors.bronze),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                manual
+                    ? 'Lokasi manual · pakai GPS'
+                    : 'Tekan lama pada peta untuk lokasi manual',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.ink.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _nearbyList() {
+  Widget _roundButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback? onTap,
+    bool loading = false,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.card,
+        elevation: 3,
+        shadowColor: Colors.black26,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: loading
+                ? const Padding(
+                    padding: EdgeInsets.all(13),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(icon, color: AppColors.bronze),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Lembar bawah yang bisa ditarik: judul, status GPS, atribusi OSM, dan daftar
+  // acara terdekat.
+  Widget _sheet() {
     final pos = _position;
     // Dengan posisi: urut terdekat. Tanpa posisi: urut waktu acara (urutan
     // dari repo), tanpa jarak.
@@ -284,39 +320,115 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
             for (final e in _list)
               if (e.hasPoint) EventDistance(e, double.nan),
           ];
+    final status = _manual
+        ? 'Lokasi manual'
+        : (pos != null ? 'GPS aktif' : 'GPS belum tersedia');
 
-    // Tarik ke bawah untuk menyegarkan; AlwaysScrollable supaya tarikan
-    // terdeteksi walau isinya sedikit.
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        children: [
-          Text(
-            pos == null ? 'Acara bertitik' : 'Acara terdekat',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textDark,
+    return DraggableScrollableSheet(
+      initialChildSize: 0.40,
+      minChildSize: 0.16,
+      maxChildSize: 0.85,
+      snap: true,
+      builder: (context, scroll) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.creamTop,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(32),
             ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Tekan lama pada peta untuk menentukan lokasi manual.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 8),
-          if (rows.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text(
-                'Belum ada acara bertitik. Tambahkan lokasi di peta saat '
-                'membuat atau mengubah acara.',
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.heroDark.withValues(alpha: 0.2),
+                blurRadius: 24,
+                offset: const Offset(0, -4),
               ),
-            )
-          else
-            for (final r in rows) _row(r),
+            ],
+          ),
+          child: ListView(
+            controller: scroll,
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBorder,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text(
+                      pos == null ? 'Acara bertitik' : 'Terdekat dari kamu',
+                      style: AppText.serif(size: 26, weight: FontWeight.w700),
+                    ),
+                  ),
+                  Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.ink.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '© OpenStreetMap contributors',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppColors.ink.withValues(alpha: 0.4),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                _errorBanner(),
+              ],
+              const SizedBox(height: 8),
+              if (rows.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Text(
+                    'Belum ada acara bertitik. Tambahkan lokasi di peta saat '
+                    'membuat atau mengubah acara.',
+                    style: TextStyle(
+                      color: AppColors.ink.withValues(alpha: 0.65),
+                    ),
+                  ),
+                )
+              else
+                for (var i = 0; i < rows.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  _row(rows[i]),
+                ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _errorBanner() {
+    final forever = _error == LocationService.errDeniedForever;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, size: 18, color: AppColors.danger),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_error!, style: const TextStyle(fontSize: 12))),
+          TextButton(
+            onPressed: forever ? _location.openAppSettings : _locate,
+            child: Text(forever ? 'Pengaturan' : 'Coba lagi'),
+          ),
         ],
       ),
     );
@@ -324,30 +436,60 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
 
   Widget _row(EventDistance r) {
     final e = r.event;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        onTap: () => _openDetail(e),
-        leading: const Icon(Icons.location_on, color: AppColors.bronze),
-        title: Text(e.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          [
-            if (e.location != null) e.location!,
-            formatZone(e.startUtc, zoneWib),
-          ].join(' · '),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: r.meters.isNaN
-            ? null
-            : Text(
-                formatDistance(r.meters),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.bronze,
-                ),
+    final local = toZone(e.startUtc, zoneWib);
+    final when =
+        '${local.day} ${monthNamesId[local.month - 1]} · '
+        '${formatZoneTime(e.startUtc, zoneWib)} '
+        '${zoneAbbreviation(e.startUtc, zoneWib)}'
+        '${(e.location ?? '').trim().isEmpty ? '' : ' · ${e.location!.trim()}'}';
+    return InkWell(
+      onTap: () => _openDetail(e),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    e.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    when,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.ink.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
               ),
+            ),
+            if (!r.meters.isNaN) ...[
+              const SizedBox(width: 8),
+              Text(
+                formatDistance(r.meters),
+                style: const TextStyle(fontSize: 15, color: AppColors.bronze),
+              ),
+            ],
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 96,
+              child: GradientButton(
+                label: 'Rute',
+                icon: Icons.navigation_outlined,
+                height: 44,
+                onPressed: () => _openRoute(e),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

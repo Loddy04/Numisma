@@ -25,6 +25,8 @@ class EventMap extends StatelessWidget {
   final ValueChanged<LatLng>? onTap;
   final ValueChanged<LatLng>? onLongPress;
   final VoidCallback? onReady;
+  // false = atribusi OSM ditulis sendiri oleh layar pemakainya (Peta Jelajah).
+  final bool showAttribution;
 
   const EventMap({
     super.key,
@@ -35,6 +37,7 @@ class EventMap extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.onReady,
+    this.showAttribution = true,
   });
 
   @override
@@ -58,7 +61,8 @@ class EventMap extends StatelessWidget {
           userAgentPackageName: 'com.numisma.app',
         ),
         MarkerLayer(markers: markers),
-        const SimpleAttributionWidget(
+        if (showAttribution)
+          const SimpleAttributionWidget(
           source: Text('OpenStreetMap contributors'),
         ),
       ],
@@ -66,24 +70,38 @@ class EventMap extends StatelessWidget {
   }
 }
 
-// Posisi pengguna: titik biru berbingkai putih.
+// Posisi pengguna: titik cokelat berbingkai putih dengan lingkaran lembut di
+// sekelilingnya.
 Marker userMarker(LatLng point) => Marker(
   point: point,
-  width: 26,
-  height: 26,
-  child: Container(
-    decoration: BoxDecoration(
-      color: Colors.blue,
-      shape: BoxShape.circle,
-      border: Border.all(color: Colors.white, width: 3),
-      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-    ),
+  width: 52,
+  height: 52,
+  child: Stack(
+    alignment: Alignment.center,
+    children: [
+      Container(
+        decoration: BoxDecoration(
+          color: AppColors.bronze.withValues(alpha: 0.18),
+          shape: BoxShape.circle,
+        ),
+      ),
+      Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          color: AppColors.bronze,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 3),
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+        ),
+      ),
+    ],
   ),
 );
 
 // Penanda acara berbentuk pin. `alignment: topCenter` menaruh pin DI ATAS
 // titiknya, jadi ujung pin tepat di koordinat. `small` (abu-abu) untuk acara
-// lain di pemilih lokasi (hanya tampilan); `highlight` (merah marun) untuk
+// lain di pemilih lokasi (hanya tampilan); `highlight` (cokelat tua) untuk
 // titik yang sedang dipilih.
 Marker eventMarker(
   LatLng point, {
@@ -93,8 +111,8 @@ Marker eventMarker(
 }) {
   final size = small ? 26.0 : 42.0;
   final color = highlight
-      ? AppColors.maroon
-      : (small ? Colors.grey : AppColors.bronze);
+      ? AppColors.heroDark
+      : (small ? Colors.grey : AppColors.heroLight);
   return Marker(
     point: point,
     width: size,
@@ -102,7 +120,12 @@ Marker eventMarker(
     alignment: Alignment.topCenter,
     child: GestureDetector(
       onTap: onTap,
-      child: Icon(Icons.location_on, color: color, size: size),
+      child: Icon(
+        Icons.location_on,
+        color: color,
+        size: size,
+        shadows: const [Shadow(color: Colors.black26, blurRadius: 6)],
+      ),
     ),
   );
 }

@@ -296,11 +296,6 @@ class _ScanScreenState extends State<ScanScreen> {
             onPressed: () => _openForm(null),
             child: const Text('Isi manual dengan foto ini'),
           ),
-          const SizedBox(height: 10),
-          OutlinedButton(
-            onPressed: () => _openForm(CoinGuess.sample()),
-            child: const Text('Gunakan hasil contoh'),
-          ),
           const SizedBox(height: 4),
           TextButton(
             onPressed: () => setState(() {
