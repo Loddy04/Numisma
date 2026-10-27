@@ -112,8 +112,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     return '${two(d.day)}/${two(d.month)}/${d.year} ${two(d.hour)}:${two(d.minute)}';
   }
 
-  // Baris bintang. `onSelect` null = hanya tampilan (di riwayat).
-  Widget _stars(int value, {ValueChanged<int>? onSelect, double size = 36}) {
+  // Baris bintang membulat; yang belum terpilih berwarna krem tua. `onSelect`
+  // null = hanya tampilan (di riwayat).
+  Widget _stars(
+    int value, {
+    ValueChanged<int>? onSelect,
+    double size = 40,
+    double gap = 10,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -121,11 +127,11 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           GestureDetector(
             onTap: onSelect == null ? null : () => onSelect(i),
             child: Padding(
-              padding: EdgeInsets.only(right: onSelect == null ? 2 : 6),
+              padding: EdgeInsets.only(right: i == 5 ? 0 : gap),
               child: Icon(
-                i <= value ? Icons.star_rounded : Icons.star_outline_rounded,
+                Icons.star_rounded,
                 size: size,
-                color: AppColors.gold,
+                color: i <= value ? AppColors.gold : const Color(0xFFE6DCCD),
               ),
             ),
           ),
@@ -141,85 +147,132 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     ),
   );
 
-  Widget _buildForm() {
+  // Kartu penilaian: label di tengah dan lima bintang.
+  Widget _buildRating() {
     return SoftCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const FieldLabel('Penilaian'),
-          _stars(
-            _rating,
-            onSelect: (v) => setState(() {
-              _rating = v;
-              _ratingError = false;
-            }),
-          ),
-          if (_ratingError) _error('Pilih rating bintang dulu.'),
-          const SizedBox(height: 18),
-          const FieldLabel('Kesan'),
-          TextField(
-            controller: _kesanController,
-            maxLines: 3,
-            onChanged: (_) {
-              if (_textError) setState(() => _textError = false);
-            },
-            decoration: appInput(hint: 'Apa kesanmu selama mengikuti kuliah ini?'),
-          ),
-          const SizedBox(height: 16),
-          const FieldLabel('Saran'),
-          TextField(
-            controller: _saranController,
-            maxLines: 3,
-            onChanged: (_) {
-              if (_textError) setState(() => _textError = false);
-            },
-            decoration: appInput(hint: 'Apa saranmu untuk perkuliahan ini?'),
-          ),
-          if (_textError) _error('Isi saran atau kesan (boleh salah satu).'),
-          const SizedBox(height: 20),
-          GradientButton(
-            label: 'Kirim',
-            loading: _saving,
-            onPressed: _saving ? null : _submit,
-          ),
-        ],
+      radius: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: SizedBox(
+        width: double.infinity,
+        child: Column(
+          children: [
+            const Text(
+              'NILAI KAMU UNTUK MATA KULIAH INI',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 1.4,
+                color: AppColors.fieldLabel,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _stars(
+              _rating,
+              onSelect: (v) => setState(() {
+                _rating = v;
+                _ratingError = false;
+              }),
+            ),
+            if (_ratingError) _error('Pilih rating bintang dulu.'),
+          ],
+        ),
       ),
     );
   }
 
+  // Urutan kolom mengikuti desain: Saran dulu, lalu Kesan.
+  Widget _buildForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildRating(),
+        const SizedBox(height: 18),
+        const FieldLabel('Saran'),
+        TextField(
+          controller: _saranController,
+          minLines: 2,
+          maxLines: 4,
+          onChanged: (_) {
+            if (_textError) setState(() => _textError = false);
+          },
+          decoration: appInput(
+            hint: 'Apa saranmu untuk perkuliahan ini?',
+            radius: 26,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const FieldLabel('Kesan'),
+        TextField(
+          controller: _kesanController,
+          minLines: 2,
+          maxLines: 4,
+          onChanged: (_) {
+            if (_textError) setState(() => _textError = false);
+          },
+          decoration: appInput(
+            hint: 'Apa kesanmu selama mengikuti kuliah ini?',
+            radius: 26,
+          ),
+        ),
+        if (_textError) _error('Isi saran atau kesan (boleh salah satu).'),
+        const SizedBox(height: 20),
+        GradientButton(
+          label: 'Kirim',
+          icon: Icons.send_outlined,
+          loading: _saving,
+          onPressed: _saving ? null : _submit,
+        ),
+      ],
+    );
+  }
+
   Widget _buildHistoryItem(FeedbackEntry e) {
+    Widget block(String label, String text) => Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              letterSpacing: 1.2,
+              color: AppColors.fieldLabel,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(text, style: const TextStyle(fontSize: 15, height: 1.4)),
+        ],
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: SoftCard(
+        radius: 24,
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _stars(e.rating, size: 20),
-                Text(
-                  _formatDateTime(e.createdAt),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.ink.withValues(alpha: 0.5),
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _stars(e.rating, size: 16, gap: 2),
+                  Text(
+                    _formatDateTime(e.createdAt),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.ink.withValues(alpha: 0.55),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            if (e.kesan != null) ...[
-              const SizedBox(height: 12),
-              const FieldLabel('Kesan'),
-              Text(e.kesan!),
+                ],
+              ),
+              if (e.saran != null) block('Saran', e.saran!),
+              if (e.kesan != null) block('Kesan', e.kesan!),
             ],
-            if (e.saran != null) ...[
-              const SizedBox(height: 12),
-              const FieldLabel('Saran'),
-              Text(e.saran!),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -230,24 +283,20 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       children: [
+        // Judul "Saran & Kesan" dipasang HomeShell; di sini subjudulnya.
         Text(
           'Mata kuliah Pemrograman Aplikasi Mobile',
-          style: AppText.serif(size: 20, weight: FontWeight.w700),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Bagaimana saran dan kesanmu untuk mata kuliah ini?',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 16,
             color: AppColors.ink.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 16),
         _buildForm(),
-        const SizedBox(height: 24),
-        Text('Riwayat', style: AppText.serif(size: 20, weight: FontWeight.w700)),
+        const SizedBox(height: 26),
+        Text('Riwayat', style: AppText.serif(size: 24, weight: FontWeight.w700)),
         const SizedBox(height: 12),
         if (_history.isEmpty)
           Text(

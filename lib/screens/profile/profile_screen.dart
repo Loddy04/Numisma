@@ -10,12 +10,15 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../models/user.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
+import '../../services/sync_service.dart';
 import '../../theme.dart';
+import '../../widgets/coin_rings.dart';
 import '../../widgets/soft_card.dart';
 import '../crop/crop_screen.dart';
 
@@ -42,6 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _savingPhoto = false;
   bool _biometricAvailable = false; // HP punya sensor + sidik jari terdaftar
   bool _biometricBusy = false; // sedang memindai/menyimpan pengaturan
+  int _pending = 0; // koin dan blok yang belum diunggah (kartu Sinkronisasi)
 
   @override
   void initState() {
@@ -55,10 +59,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final email =
           user == null ? '' : await _authService.decryptedEmail(user);
       final bioAvailable = await _biometricService.isAvailable();
+      final pending = user == null ? 0 : await SyncService().pendingCount(user);
       if (!mounted) return;
       setState(() {
         _user = user;
         _email = email;
+        _pending = pending;
         _biometricAvailable = bioAvailable;
         _loading = false;
       });
@@ -193,18 +199,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // "2026-10-19T..." (UTC) -> "19/10/2026" dalam waktu lokal HP.
-  String _formatDate(String iso) {
-    final d = DateTime.parse(iso).toLocal();
-    final dd = d.day.toString().padLeft(2, '0');
-    final mm = d.month.toString().padLeft(2, '0');
-    return '$dd/$mm/${d.year}';
-  }
-
-  // Foto bulat dengan cincin emas di atas kepala bergradasi. Ikon kamera kecil
-  // di pojok menandakan foto bisa diganti.
+  // Foto bulat dengan cincin emas di atas kepala bergradasi. Tombol kamera
+  // emas di pojok menandakan foto bisa diganti.
   Widget _buildAvatar(User user) {
-    const radius = 52.0;
+    const radius = 58.0;
     final path = user.photoPath;
 
     // onBackgroundImageError (di bawah) menelan error bila file foto
@@ -222,7 +220,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundImage: image,
         onBackgroundImageError: image == null ? null : (_, _) {},
         child: image == null
-            ? const Icon(Icons.person, size: 64, color: AppColors.bronze)
+            ? const Icon(Icons.person, size: 72, color: AppColors.heroLight)
             : null,
       ),
     );
@@ -238,21 +236,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: CircularProgressIndicator(color: Colors.white),
           ),
         Positioned(
-          right: 0,
-          bottom: 2,
+          right: 2,
+          bottom: 4,
           child: Material(
-            color: Colors.white,
-            shape: const CircleBorder(),
-            elevation: 2,
+            color: AppColors.gold,
+            shape: const CircleBorder(
+              side: BorderSide(color: AppColors.creamTop, width: 2),
+            ),
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: _changePhoto,
               child: const Padding(
-                padding: EdgeInsets.all(8),
+                padding: EdgeInsets.all(9),
                 child: Icon(
-                  Icons.camera_alt,
-                  size: 18,
-                  color: AppColors.bronze,
+                  Icons.camera_alt_outlined,
+                  size: 20,
+                  color: AppColors.heroDark,
                 ),
               ),
             ),
@@ -262,46 +261,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Kepala Profil: kartu bergradasi cokelat berisi foto, nama, dan email.
+  // Kepala Profil: gradasi cokelat selebar layar sampai ke tepi atas (di bawah
+  // bilah status), berisi label PROFIL, foto, nama, dan email. Kartu pertama
+  // sedikit menimpa tepi bawahnya (lihat build).
   Widget _buildHeader(User user) {
+    final top = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-      decoration: BoxDecoration(
-        gradient: AppGradients.brown,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: AppShadows.strong,
-      ),
-      child: Column(
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(gradient: AppGradients.brown),
+      child: Stack(
         children: [
-          _buildAvatar(user),
-          const SizedBox(height: 14),
-          Text(
-            user.username,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.serif(
-              size: 28,
-              weight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _email,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.8),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Ketuk foto untuk mengganti',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.6),
+          const Positioned(top: -90, right: -70, child: CoinRings()),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, top + 18, 20, 64),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                children: [
+                  Text(
+                    'PROFIL',
+                    style: TextStyle(
+                      fontSize: 13,
+                      letterSpacing: 3,
+                      color: AppColors.creamTop.withValues(alpha: 0.85),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _buildAvatar(user),
+                  const SizedBox(height: 16),
+                  Text(
+                    user.username,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.serif(
+                      size: 36,
+                      weight: FontWeight.w700,
+                      color: AppColors.creamTop,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -309,53 +310,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Satu baris info dalam kartu: ikon dalam lingkaran lembut, label kecil,
-  // dan nilai. `onTap` dan `trailing` opsional (mis. ubah nama).
-  Widget _infoRow(
-    IconData icon,
-    String label,
-    String value, {
-    VoidCallback? onTap,
-    Widget? trailing,
-  }) {
-    return SoftCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  // Label kecil huruf kapital dan nilainya, dipakai kartu Nama dan Email.
+  Widget _labelValue(String label, String value) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 12,
+              letterSpacing: 1.2,
+              color: AppColors.fieldLabel,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Judul dan keterangan dengan ikon di kiri, untuk kartu sidik jari dan
+  // Sinkronisasi.
+  Widget _iconTitle(IconData icon, String title, String subtitle) {
+    return Expanded(
       child: Row(
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.tileActive,
-            ),
-            child: Icon(icon, color: AppColors.bronze, size: 22),
-          ),
-          const SizedBox(width: 14),
+          Icon(icon, color: AppColors.bronze, size: 30),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.ink.withValues(alpha: 0.55),
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: AppColors.ink.withValues(alpha: 0.6),
                   ),
                 ),
               ],
             ),
           ),
-          ?trailing,
         ],
       ),
     );
@@ -369,55 +378,107 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Center(child: Text('Profil tidak ditemukan.'));
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      children: [
-        _buildHeader(user),
-        const SizedBox(height: 20),
-        _infoRow(
-          Icons.person_outline,
-          'Nama tampilan',
-          user.username,
-          onTap: _editName,
-          trailing: const Icon(Icons.edit_outlined, size: 20),
-        ),
-        const SizedBox(height: 12),
-        _infoRow(
-          Icons.event_outlined,
-          'Bergabung',
-          _formatDate(user.createdAt),
-        ),
-        const SizedBox(height: 12),
-        SoftCard(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          child: SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            secondary: Container(
-              width: 42,
-              height: 42,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.tileActive,
+    final bioSubtitle = !_biometricAvailable
+        ? 'Tidak tersedia: HP belum punya sidik jari terdaftar.'
+        : (user.biometricEnabled ? 'Aktif' : 'Nonaktif');
+
+    const cardPadding = EdgeInsets.symmetric(horizontal: 20, vertical: 16);
+
+    // Kepala bergradasi ada di luar daftar kartu; daftar kartu digeser ke atas
+    // sebesar tinggi tambahan di dasar kepala (64 - 36) supaya kartu pertama
+    // menimpa tepi bawah kepala.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          _buildHeader(user),
+          Transform.translate(
+            offset: const Offset(0, -36),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  SoftCard(
+                    radius: 28,
+                    padding: cardPadding,
+                    onTap: _editName,
+                    child: Row(
+                      children: [
+                        _labelValue('Nama tampilan', user.username),
+                        const Text(
+                          'Ubah',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.bronze,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SoftCard(
+                    radius: 28,
+                    padding: cardPadding,
+                    child: Row(
+                      children: [
+                        _labelValue('Email', _email),
+                        Text(
+                          'tidak bisa diubah',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.ink.withValues(alpha: 0.55),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SoftCard(
+                    radius: 28,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        _iconTitle(
+                          Icons.fingerprint,
+                          'Masuk dengan sidik jari',
+                          bioSubtitle,
+                        ),
+                        Switch(
+                          value: user.biometricEnabled,
+                          // null = switch nonaktif saat tidak tersedia/sibuk.
+                          onChanged: (_biometricAvailable && !_biometricBusy)
+                              ? _toggleBiometric
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SoftCard(
+                    radius: 28,
+                    padding: cardPadding,
+                    child: Row(
+                      children: [
+                        _iconTitle(
+                          Icons.sync,
+                          'Sinkronisasi',
+                          _pending == 0
+                              ? 'Semua sudah tersinkron'
+                              : '$_pending belum diunggah',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.fingerprint, color: AppColors.bronze),
             ),
-            title: const Text(
-              'Masuk dengan sidik jari',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              _biometricAvailable
-                  ? 'Login tanpa mengetik password.'
-                  : 'Tidak tersedia: HP belum punya sidik jari terdaftar.',
-            ),
-            value: user.biometricEnabled,
-            // null = switch nonaktif (abu-abu) saat tidak tersedia/sibuk.
-            onChanged: (_biometricAvailable && !_biometricBusy)
-                ? _toggleBiometric
-                : null,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

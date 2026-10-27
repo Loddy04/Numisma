@@ -1,6 +1,6 @@
 // widgets/gradient_button.dart
 // Tombol utama bergradasi cokelat dengan bayangan lembut (Login, Daftar,
-// dialog konfirmasi). ElevatedButton bawaan tidak bisa bergradasi, jadi
+// Saran, dialog konfirmasi). ElevatedButton bawaan tidak bisa bergradasi, jadi
 // dibuat dari Container + InkWell. Gradasi dan bayangan diambil dari
 // theme.dart supaya perubahannya cukup di satu tempat.
 
@@ -12,12 +12,16 @@ class GradientButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed; // null = nonaktif (mis. saat memuat)
   final bool loading; // true = tampilkan lingkaran putar, bukan teks
+  final IconData? icon; // ikon kecil di kiri teks (opsional)
+  final double height;
 
   const GradientButton({
     super.key,
     required this.label,
     required this.onPressed,
     this.loading = false,
+    this.icon,
+    this.height = 52,
   });
 
   @override
@@ -27,7 +31,7 @@ class GradientButton extends StatelessWidget {
     return Opacity(
       opacity: enabled || loading ? 1 : 0.55,
       child: Container(
-        height: 52,
+        height: height,
         decoration: BoxDecoration(
           borderRadius: radius,
           gradient: AppGradients.brown,
@@ -48,13 +52,22 @@ class GradientButton extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (icon != null) ...[
+                          Icon(icon, size: 20, color: Colors.white),
+                          const SizedBox(width: 10),
+                        ],
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
             ),
           ),

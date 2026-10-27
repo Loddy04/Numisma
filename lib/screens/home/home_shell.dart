@@ -321,7 +321,7 @@ class _HomeShellState extends State<HomeShell> {
 
     return Container(
       // Wilayah di sekitar kapsul memakai warna dasar gradasi Beranda.
-      color: _tab == _tabBeranda ? AppColors.creamBottom : AppColors.paper,
+      color: AppColors.creamBottom,
       padding: EdgeInsets.fromLTRB(16, 0, 16, 10 + bottomInset),
       child: SizedBox(
         height: barHeight + lift,
@@ -417,24 +417,35 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final beranda = _tab == _tabBeranda;
+    // Beranda dan Profil memakai kepala sendiri; hanya Saran yang mendapat
+    // judul besar dari kerangka ini.
+    final ownHeader = _tab == _tabBeranda || _tab == _tabProfil;
+    // Semua tab memakai latar krem bergradasi. Beranda punya header sendiri
+    // (BerandaView); Profil dan Saran memakai judul serif besar di badan layar
+    // (tanpa AppBar), sama seperti layar Koleksi.
     return Scaffold(
-      // Beranda memakai latar krem bergradasi dan header sendiri (BerandaView),
-      // jadi tanpa AppBar. Tab lain memakai AppBar tema global.
-      backgroundColor: beranda ? AppColors.creamBottom : null,
-      appBar: beranda ? null : AppBar(title: Text(_titles[_tab])),
-      body: beranda
-          ? Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [AppColors.creamTop, AppColors.creamBottom],
+      backgroundColor: AppColors.creamBottom,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppGradients.page),
+        child: ownHeader
+            ? _buildBody()
+            : SafeArea(
+                bottom: false,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                      child: Text(
+                        _titles[_tab],
+                        style: AppText.serif(size: 36, weight: FontWeight.w700),
+                      ),
+                    ),
+                    Expanded(child: _buildBody()),
+                  ],
                 ),
               ),
-              child: _buildBody(),
-            )
-          : _buildBody(),
+      ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }

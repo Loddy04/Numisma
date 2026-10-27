@@ -24,7 +24,6 @@ import '../../widgets/field_label.dart';
 import '../../widgets/gradient_button.dart';
 import '../../widgets/soft_card.dart';
 import '../../widgets/tilt_photo.dart';
-import '../chain/chain_screen.dart';
 import '../chat/chat_screen.dart';
 import 'coin_form_screen.dart';
 import 'coin_photo_viewer.dart';
@@ -83,12 +82,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => ChatScreen(contextCoin: coin)));
-  }
-
-  void _openChain() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const ChainScreen()));
   }
 
   Future<void> _delete() async {
@@ -217,22 +210,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
                       child: Icon(Icons.chevron_left, color: Colors.white),
                     ),
                   ),
-                  pill(
-                    onTap: _edit,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 11,
-                      ),
-                      child: Text(
-                        'Ubah',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -268,7 +245,6 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
               style: const TextStyle(
                 fontSize: 11,
                 letterSpacing: 1.2,
-                fontWeight: FontWeight.w700,
                 color: AppColors.fieldLabel,
               ),
             ),
@@ -282,7 +258,7 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
 
   Widget _text(String? value) => Text(
     (value == null || value.isEmpty) ? '–' : value,
-    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+    style: const TextStyle(fontSize: 17),
   );
 
   // "Yen (JPY)" bila ada di daftar mata uang; selain itu kodenya saja.
@@ -391,9 +367,9 @@ class _CoinDetailScreenState extends State<CoinDetailScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: _openChain,
-                icon: const Icon(Icons.link),
-                label: const Text('Lihat jejak catatan'),
+                onPressed: _edit,
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Ubah'),
               ),
               const SizedBox(height: 8),
               TextButton.icon(
