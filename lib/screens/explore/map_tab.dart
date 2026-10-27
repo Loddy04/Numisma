@@ -165,9 +165,21 @@ class _MapTabState extends State<MapTab> with AutomaticKeepAliveClientMixin {
   }
 
   // Membuka Google Maps dengan petunjuk arah ke titik acara (Maps URLs).
+  // Rute dimulai dari posisi yang sedang dipakai aplikasi (GPS atau lokasi
+  // manual); bila belum ada, dicoba mengambil GPS sebentar. Tanpa posisi
+  // sama sekali, Google Maps yang menentukan titik awalnya.
   Future<void> _openRoute(Event e) async {
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}',
+    var origin = _position;
+    if (origin == null) {
+      try {
+        origin = await _location.currentPosition();
+      } catch (_) {}
+    }
+    final uri = routeUri(
+      destLat: e.lat!,
+      destLng: e.lng!,
+      originLat: origin?.lat,
+      originLng: origin?.lng,
     );
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);

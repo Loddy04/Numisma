@@ -45,6 +45,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   // Jarak dari posisi pengguna ke titik acara (meter); null = belum diketahui
   // (GPS belum siap, izin ditolak, atau acara tanpa titik).
   double? _distance;
+  // Posisi GPS terakhir yang didapat, dipakai sebagai asal rute.
+  GeoPoint? _myPos;
 
   @override
   void initState() {
@@ -59,19 +61,29 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     try {
       final p = await LocationService().currentPosition();
       if (!mounted) return;
-      setState(
-        () => _distance = distanceMeters(p.lat, p.lng, event.lat!, event.lng!),
-      );
+      setState(() {
+        _myPos = p;
+        _distance = distanceMeters(p.lat, p.lng, event.lat!, event.lng!);
+      });
     } catch (_) {}
   }
 
   // Membuka Google Maps dengan petunjuk arah ke titik acara (Maps URLs).
-  // Tanpa SDK dan tanpa API key; tujuan saja yang dikirim, posisi asal
-  // ditentukan Google Maps sendiri.
+  // Tanpa SDK dan tanpa API key. Posisi asal dikirim dari GPS aplikasi
+  // supaya rute dimulai dari lokasimu saat ini; bila belum diketahui dicoba
+  // diambil dulu, dan bila gagal Google Maps yang menentukan titik awalnya.
   Future<void> _openRoute(Event event) async {
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1'
-      '&destination=${event.lat},${event.lng}',
+    var origin = _myPos;
+    if (origin == null) {
+      try {
+        origin = await LocationService().currentPosition();
+      } catch (_) {}
+    }
+    final uri = routeUri(
+      destLat: event.lat!,
+      destLng: event.lng!,
+      originLat: origin?.lat,
+      originLng: origin?.lng,
     );
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);

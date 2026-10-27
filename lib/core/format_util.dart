@@ -23,6 +23,9 @@ const monthNamesId = [
 // Jumlah desimal menyesuaikan besar angka supaya kurs kecil (0,008781)
 // tidak tampil "0,00".
 String formatNumber(double value) {
+  // Angka sangat besar (atau tak terhingga) tidak boleh tampil berpangkat
+  // ("1.0e+21"): toStringAsFixed berganti ke notasi eksponen mulai 1e21.
+  if (!value.isFinite || value.abs() >= 1e21) return 'sangat besar';
   final abs = value.abs();
   final decimals = abs >= 100 ? 2 : (abs >= 1 ? 4 : 6);
   final fixed = value.toStringAsFixed(decimals);

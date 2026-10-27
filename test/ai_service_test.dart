@@ -93,4 +93,29 @@ void main() {
     expect(terbaca.yearEstimated, isFalse);
     expect(terbaca.summary, isNot(contains('perkiraan AI')));
   });
+
+  test('nominal terlalu besar atau tak terhingga menjadi null', () {
+    CoinGuess g(Object? d) => CoinGuess.fromJson({
+      'type': 'banknote',
+      'country': 'Zimbabwe',
+      'denomination': d,
+      'features': 'x',
+      'confidence': 'low',
+    });
+    expect(g(1e15).denomination, isNull); // 16 angka bulat
+    expect(g(1e30).denomination, isNull);
+    expect(g('1e30').denomination, isNull); // teks berpangkat dari AI
+    expect(g(999999999999999).denomination, 999999999999999.0); // 15 angka
+  });
+
+  test('nominal desimal dibulatkan ke 4 angka', () {
+    final g = CoinGuess.fromJson({
+      'type': 'coin',
+      'country': 'Japan',
+      'denomination': 0.123456,
+      'features': 'x',
+      'confidence': 'low',
+    });
+    expect(g.denomination, 0.1235);
+  });
 }

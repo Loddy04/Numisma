@@ -45,3 +45,21 @@ List<EventDistance> sortByDistance(
   result.sort((a, b) => a.meters.compareTo(b.meters));
   return result;
 }
+
+// Alamat Google Maps (Maps URLs) untuk petunjuk arah ke titik acara. Bila
+// posisi asal diketahui, ikut dikirim sebagai `origin` supaya rute dimulai
+// dari posisi yang dipakai aplikasi (GPS atau lokasi manual), bukan dari
+// posisi yang diperkirakan Google Maps sendiri. Tanpa asal, Google Maps yang
+// menentukan titik awalnya.
+Uri routeUri({
+  required double destLat,
+  required double destLng,
+  double? originLat,
+  double? originLng,
+}) {
+  return Uri.https('www.google.com', '/maps/dir/', {
+    'api': '1',
+    if (originLat != null && originLng != null) 'origin': '$originLat,$originLng',
+    'destination': '$destLat,$destLng',
+  });
+}

@@ -106,7 +106,7 @@ class CoinGuess {
       currencyCode: (code != null && RegExp(r'^[A-Z]{3}$').hasMatch(code))
           ? code
           : null,
-      denomination: (denom != null && denom > 0) ? denom : null,
+      denomination: _sanitizeDenomination(denom),
       year: yearOk ? yearRaw : null,
       // Tanda "perkiraan" hanya bermakna bila tahunnya ada.
       yearEstimated: yearOk && estimated,
@@ -344,6 +344,19 @@ class AiService {
       throw const AiException('Jawaban AI kosong atau tidak dikenali.');
     }
   }
+}
+
+// Nominal dari AI yang tidak masuk akal (nol, negatif, tak terhingga, terlalu
+// besar) dibuang jadi null supaya pengguna mengisi sendiri; yang wajar
+// dibulatkan ke 4 angka desimal. Batasnya sama dengan isian di form
+// (core/number_input.dart): paling banyak 15 angka bulat, jadi nilainya
+// harus di bawah 10^15.
+double? _sanitizeDenomination(double? v) {
+  if (v == null || !v.isFinite || v <= 0) return null;
+  if (v >= 1e15) return null;
+  // toStringAsFixed (bukan round()) supaya nilai besar tidak meluap int64.
+  final rounded = double.parse(v.toStringAsFixed(4));
+  return rounded > 0 ? rounded : null;
 }
 
 // Merapikan teks dari AI supaya tidak terkesan "mesin": membuang tanda

@@ -9,6 +9,8 @@
 
 import 'package:uuid/uuid.dart';
 
+import '../core/format_util.dart';
+
 class Coin {
   final String id; // UUID v4, dibuat di aplikasi (bukan oleh SQLite)
   final int userId;
@@ -77,10 +79,9 @@ class Coin {
     );
   }
 
-  // Nominal tanpa ".0" yang tidak perlu: 100.0 tampil "100", 0.5 tetap "0.5".
-  String get denominationLabel => denomination == denomination.truncateToDouble()
-      ? denomination.toInt().toString()
-      : denomination.toString();
+  // Nominal gaya Indonesia tanpa notasi eksponen: 20000 tampil "20.000",
+  // 0.5 tampil "0,5". Angka di luar batas tampil "sangat besar".
+  String get denominationLabel => formatNumber(denomination);
 
   // Ke baris SQLite. `notesEnc` diberikan repo (hasil enkripsi AES),
   // karena model sendiri tidak boleh menulis `notes` sebagai teks biasa.

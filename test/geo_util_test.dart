@@ -69,4 +69,26 @@ void main() {
       expect(sortByDistance([], tuguLat, tuguLng), isEmpty);
     });
   });
+
+  group('routeUri', () {
+    test('menyertakan asal dan tujuan bila posisi diketahui', () {
+      final uri = routeUri(
+        destLat: -7.8,
+        destLng: 110.37,
+        originLat: -7.79,
+        originLng: 110.36,
+      );
+      expect(uri.host, 'www.google.com');
+      expect(uri.path, '/maps/dir/');
+      expect(uri.queryParameters['api'], '1');
+      expect(uri.queryParameters['origin'], '-7.79,110.36');
+      expect(uri.queryParameters['destination'], '-7.8,110.37');
+    });
+
+    test('tanpa asal hanya tujuan yang dikirim', () {
+      final uri = routeUri(destLat: -7.8, destLng: 110.37);
+      expect(uri.queryParameters.containsKey('origin'), isFalse);
+      expect(uri.queryParameters['destination'], '-7.8,110.37');
+    });
+  });
 }

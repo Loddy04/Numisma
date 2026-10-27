@@ -16,6 +16,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/format_util.dart';
+import '../../core/number_input.dart';
 import '../../models/coin.dart';
 import '../../services/ai_service.dart';
 import '../../services/coin_repo.dart';
@@ -97,10 +99,7 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
       _country.text = g.country ?? '';
       _currencyCode = g.currencyCode;
       if (g.denomination != null) {
-        final d = g.denomination!;
-        _denomination.text = d == d.truncateToDouble()
-            ? d.toInt().toString()
-            : d.toString();
+        _denomination.text = formatNumber(g.denomination!);
       }
       _year.text = g.year?.toString() ?? '';
       _yearEstimated = g.yearEstimated;
@@ -125,17 +124,11 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
 
   // --- Validasi: pesan ramah dalam bahasa Indonesia -------------------
 
-  double? _parseNumber(String text) =>
-      double.tryParse(text.trim().replaceAll(',', '.'));
-
   String? _validateRequired(String? v, String label) =>
       (v == null || v.trim().isEmpty) ? '$label wajib diisi.' : null;
 
-  String? _validateDenomination(String? v) {
-    final n = _parseNumber(v ?? '');
-    if (n == null || n <= 0) return 'Nominal harus berupa angka lebih dari 0.';
-    return null;
-  }
+  // Pesan galat ramah dari parseNominal (batas 15 angka, 4 desimal, dll.).
+  String? _validateDenomination(String? v) => parseNominal(v ?? '').error;
 
   String? _validateYear(String? v) {
     final text = v?.trim() ?? '';
@@ -270,7 +263,7 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
     try {
       final country = _country.text.trim();
       final currency = _currencyCode!; // sudah divalidasi wajib dipilih
-      final denomination = _parseNumber(_denomination.text)!;
+      final denomination = parseNominal(_denomination.text).value!;
       final year = int.tryParse(_year.text.trim());
       final notes = _nullIfEmpty(_notes.text);
 
@@ -473,7 +466,8 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
             const FieldLabel('Negara'),
             TextFormField(
               controller: _country,
-              decoration: appInput(hint: 'mis. Jepang'),
+              maxLength: 50,
+              decoration: appInput(hint: 'mis. Jepang', counterText: ''),
               validator: (v) => _validateRequired(v, 'Negara'),
             ),
             gap,
@@ -483,7 +477,13 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: appInput(hint: 'mis. 100'),
+              // Hanya angka dan koma; titik ribuan disisipkan otomatis dan
+              // panjang dibatasi (core/number_input.dart).
+              inputFormatters: [NominalInputFormatter()],
+              decoration: appInput(
+                hint: 'mis. 100',
+                helper: 'Maksimal $maxNominalDigits angka. Koma untuk desimal.',
+              ),
               validator: _validateDenomination,
             ),
             gap,
@@ -554,9 +554,11 @@ class _CoinFormScreenState extends State<CoinFormScreen> {
             TextFormField(
               controller: _notes,
               maxLines: 3,
+              maxLength: 500,
               decoration: appInput(
                 hint: 'Opsional',
                 helper: 'Disimpan terenkripsi.',
+                counterText: '',
               ),
             ),
             const SizedBox(height: 24),
