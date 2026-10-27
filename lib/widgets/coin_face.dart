@@ -3,7 +3,8 @@
 // Sengaja digambar dari bentuk dan teks saja, TANPA gambar koin asli, supaya
 // tidak ada masalah lisensi gambar dan tidak terikat ke koin koleksi
 // pengguna tertentu. Dipakai di Tebak Asal Koin (nominal + kode mata uang)
-// dan Coin Flip (teks Head/Tail).
+// dan Coin Flip (teks Head/Tail). Tampilan: bola emas bergradasi radial,
+// cincin dalam, dan tulisan serif tebal sedikit miring.
 
 import 'package:flutter/material.dart';
 
@@ -29,48 +30,73 @@ class CoinFace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shape = banknote ? BoxShape.rectangle : BoxShape.circle;
+    final radius = banknote ? BorderRadius.circular(size * 0.1) : null;
+    final width = banknote ? size * 1.5 : size;
+    final height = banknote ? size * 0.8 : size;
+
     return Container(
-      width: banknote ? size * 1.5 : size,
-      height: banknote ? size * 0.8 : size,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
         shape: shape,
-        borderRadius: banknote ? BorderRadius.circular(12) : null,
-        // Gradasi emas ke perunggu memberi kesan logam tanpa gambar.
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFE6C98C), AppColors.gold, AppColors.bronze],
+        borderRadius: radius,
+        // Gradasi radial dari krem emas ke perunggu memberi kesan logam.
+        gradient: const RadialGradient(
+          center: Alignment(-0.4, -0.5),
+          radius: 1.1,
+          colors: [Color(0xFFEBD8AE), AppColors.gold, Color(0xFF9A6B3A)],
+          stops: [0.0, 0.55, 1.0],
         ),
-        border: Border.all(color: AppColors.bronze, width: size * 0.04),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.heroDark.withValues(alpha: 0.3),
+            blurRadius: 26,
+            spreadRadius: -4,
+            offset: const Offset(0, 14),
+          ),
         ],
       ),
       alignment: Alignment.center,
-      child: Padding(
-        padding: EdgeInsets.all(size * 0.08),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: size * 0.28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                ),
-              ),
-              if (subtitle != null && subtitle!.isNotEmpty)
-                Text(
-                  subtitle!,
-                  style: TextStyle(
-                    fontSize: size * 0.13,
-                    color: AppColors.textDark,
+      // Cincin dalam.
+      child: Container(
+        margin: EdgeInsets.all(size * 0.08),
+        decoration: BoxDecoration(
+          shape: shape,
+          borderRadius: banknote ? BorderRadius.circular(size * 0.06) : null,
+          border: Border.all(
+            color: AppColors.heroLight.withValues(alpha: 0.85),
+            width: size * 0.02,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Padding(
+          padding: EdgeInsets.all(size * 0.08),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Transform.rotate(
+              angle: -0.12,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title.toUpperCase(),
+                    style: AppText.serif(
+                      size: size * 0.26,
+                      weight: FontWeight.w900,
+                      color: AppColors.heroDark,
+                    ),
                   ),
-                ),
-            ],
+                  if (subtitle != null && subtitle!.isNotEmpty)
+                    Text(
+                      subtitle!,
+                      style: AppText.serif(
+                        size: size * 0.11,
+                        color: AppColors.heroDark.withValues(alpha: 0.8),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

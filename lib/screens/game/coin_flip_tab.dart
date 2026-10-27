@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../services/game_service.dart';
+import '../../theme.dart';
 import '../../widgets/coin_face.dart';
 
 class CoinFlipTab extends StatefulWidget {
@@ -114,46 +115,65 @@ class _CoinFlipTabState extends State<CoinFlipTab>
       ..forward();
   }
 
+  Widget _countChip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.tileActive,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14, color: AppColors.bronze),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const SizedBox(height: 16),
-        Center(child: _buildCoin()),
-        const SizedBox(height: 24),
-        Text(
-          _controller.isAnimating
-              ? 'Berputar...'
-              : (_heads + _tails == 0
-                    ? 'Belum dilempar'
-                    : (_isHead ? 'Head!' : 'Tail!')),
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _sensorOk
-              ? 'Goyang HP untuk melempar koin, atau tekan tombol.'
-              : 'Sensor tidak tersedia di perangkat ini. Pakai tombol.',
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.grey),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: ElevatedButton.icon(
-            onPressed: _flip,
-            icon: const Icon(Icons.casino),
-            label: const Text('Lempar koin'),
+    final status = _controller.isAnimating
+        ? 'Berputar…'
+        : (_heads + _tails == 0 ? 'Siap dilempar' : (_isHead ? 'Head' : 'Tail'));
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(
+        children: [
+          const Spacer(),
+          // Mengetuk koin juga melempar (cadangan bila sensor tidak ada), tanpa
+          // tombol terpisah.
+          Center(
+            child: GestureDetector(onTap: _flip, child: _buildCoin()),
           ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Head: $_heads   ·   Tail: $_tails',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ],
+          const SizedBox(height: 40),
+          Text(
+            status,
+            textAlign: TextAlign.center,
+            style: AppText.serif(size: 38, weight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _countChip('Head $_heads'),
+              const SizedBox(width: 10),
+              _countChip('Tail $_tails'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _sensorOk
+                ? 'Goyang HP untuk melempar koin'
+                : 'Sensor tidak tersedia di perangkat ini. Ketuk koin untuk '
+                      'melempar.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: AppColors.ink.withValues(alpha: 0.6),
+            ),
+          ),
+          const Spacer(),
+        ],
+      ),
     );
   }
 

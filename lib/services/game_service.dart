@@ -36,7 +36,7 @@ class SeedCoin {
   );
 }
 
-// Satu soal: koin yang ditampilkan, empat pilihan negara, dan jawabannya.
+// Satu soal: koin yang ditampilkan, dua pilihan negara, dan jawabannya.
 class QuizQuestion {
   final SeedCoin coin;
   final List<String> options;
@@ -53,7 +53,50 @@ class BestScore {
 
 class GameService {
   static const questionCount = 10;
-  static const optionCount = 4;
+  // Dua pilihan, supaya bisa dijawab dengan memiringkan HP ke kiri atau kanan.
+  static const optionCount = 2;
+
+  // Wilayah per kode mata uang. Dipakai memilih pengecoh yang masuk akal
+  // (Jepang vs Korea Selatan, bukan Jepang vs Brasil). Kode yang tidak ada di
+  // sini (mis. ZAR) jatuh ke pilihan acak.
+  static const _regions = <String, String>{
+    // Asia Tenggara
+    'IDR': 'sea', 'MYR': 'sea', 'SGD': 'sea', 'THB': 'sea', 'VND': 'sea',
+    'PHP': 'sea', 'BND': 'sea', 'KHR': 'sea', 'LAK': 'sea', 'MMK': 'sea',
+    // Asia Timur
+    'JPY': 'ea', 'KRW': 'ea', 'CNY': 'ea', 'HKD': 'ea', 'TWD': 'ea',
+    // Asia Selatan
+    'INR': 'sa', 'PKR': 'sa', 'LKR': 'sa', 'BDT': 'sa',
+    // Timur Tengah
+    'SAR': 'me', 'QAR': 'me', 'AED': 'me', 'KWD': 'me', 'ILS': 'me',
+    'TRY': 'me', 'EGP': 'me',
+    // Eropa
+    'GBP': 'eu', 'CHF': 'eu', 'SEK': 'eu', 'NOK': 'eu', 'DKK': 'eu',
+    'PLN': 'eu', 'CZK': 'eu', 'HUF': 'eu', 'RUB': 'eu',
+    // Amerika
+    'USD': 'am', 'CAD': 'am', 'BRL': 'am', 'MXN': 'am', 'ARS': 'am',
+    // Oseania
+    'AUD': 'oc', 'NZD': 'oc',
+  };
+
+  // Wilayah suatu mata uang, null bila tidak dikelompokkan.
+  static String? regionOf(String currencyCode) => _regions[currencyCode];
+
+  // Memilih satu koin pengecoh untuk [answer]: dari wilayah yang sama bila
+  // ada negara lain di sana, jika tidak dari negara mana pun yang berbeda.
+  static SeedCoin pickDistractor(
+    SeedCoin answer,
+    List<SeedCoin> seed,
+    Random rnd,
+  ) {
+    final others = seed.where((c) => c.country != answer.country).toList();
+    final region = regionOf(answer.currencyCode);
+    final near = region == null
+        ? <SeedCoin>[]
+        : others.where((c) => regionOf(c.currencyCode) == region).toList();
+    final pool = near.isNotEmpty ? near : others;
+    return pool[rnd.nextInt(pool.length)];
+  }
 
   static Future<List<SeedCoin>>? _seed;
 
@@ -68,21 +111,19 @@ class GameService {
     }();
   }
 
-  // 10 soal acak tanpa koin ganda. Tiga pilihan salah diambil dari negara
-  // lain di seed dan dijamin berbeda dari jawaban maupun satu sama lain.
-  // Seed hanya memuat mata uang yang dipakai satu negara, jadi jawabannya
-  // selalu tunggal (tidak ada soal "EUR" yang dipakai banyak negara).
+  // 10 soal acak tanpa koin ganda. Satu pilihan salah (pengecoh) diambil dari
+  // wilayah yang sama bila bisa (lihat pickDistractor), dan dijamin berbeda
+  // dari jawaban. Seed hanya memuat mata uang yang dipakai satu negara, jadi
+  // jawabannya selalu tunggal (tidak ada soal "EUR" yang dipakai banyak
+  // negara). Urutan kedua pilihan diacak: yang kiri dan yang kanan.
   Future<List<QuizQuestion>> buildQuiz({Random? random}) async {
     final rnd = random ?? Random();
     final seed = await _loadSeed();
-    final countries = seed.map((c) => c.country).toSet().toList();
 
     final picked = [...seed]..shuffle(rnd);
     return picked.take(questionCount).map((coin) {
-      final wrong = countries.where((c) => c != coin.country).toList()
-        ..shuffle(rnd);
-      final options = [coin.country, ...wrong.take(optionCount - 1)]
-        ..shuffle(rnd);
+      final wrong = pickDistractor(coin, seed, rnd);
+      final options = [coin.country, wrong.country]..shuffle(rnd);
       return QuizQuestion(coin, options);
     }).toList();
   }
