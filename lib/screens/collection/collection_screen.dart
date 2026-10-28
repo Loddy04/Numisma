@@ -10,11 +10,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../../core/format_util.dart';
 import '../../models/coin.dart';
 import '../../services/auth_service.dart';
 import '../../services/coin_repo.dart';
-import '../../services/rates_service.dart';
 import '../../theme.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/field_label.dart';
@@ -50,10 +48,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
   // ID koin yang sedang dipilih. Tidak kosong = mode multi-pilih aktif.
   final Set<String> _selected = {};
   bool get _selecting => _selected.isNotEmpty;
-
-  final _rates = RatesService();
-  String? _selectedValueText; // null = belum dihitung / tidak ada pilihan
-  int _valueNo = 0;
 
   @override
   void initState() {
@@ -95,7 +89,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
         final visible = coins.map((c) => c.id).toSet();
         _selected.removeWhere((id) => !visible.contains(id));
       });
-      _refreshSelectedValue();
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -148,37 +141,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
     setState(() {
       if (!_selected.add(id)) _selected.remove(id);
     });
-    _refreshSelectedValue();
   }
 
   void _clearSelection() {
     setState(_selected.clear);
-    _refreshSelectedValue();
   }
-
-  // "Total nilai nominal setara" koin terpilih dalam IDR (Bagian 7.11).
-  // Dihitung ulang setiap pilihan berubah; kurs sudah di-cache sehingga
-  // ketukan berikutnya hampir seketika. Nomor permintaan membuang hasil
-  // lama bila pengguna mengetuk cepat.
-  Future<void> _refreshSelectedValue() async {
-    final myNo = ++_valueNo;
-    if (_selected.isEmpty) {
-      if (_selectedValueText != null) {
-        setState(() => _selectedValueText = null);
-      }
-      return;
-    }
-    final chosen = _coins.where((c) => _selected.contains(c.id)).toList();
-    final result = await _rates.valueOfCoins(chosen, 'IDR');
-    if (!mounted || myNo != _valueNo) return;
-    final text = result.counted == 0
-        ? 'Nilai nominal setara: tidak tersedia'
-        : 'Nilai nominal setara: ${formatNumber(result.total)} IDR'
-              '${result.skipped > 0 ? ' (${result.skipped} koin tak dihitung)' : ''}';
-    setState(() => _selectedValueText = text);
-  }
-
-  String? _selectedValueLabel() => _selectedValueText;
 
   Future<void> _deleteSelected() async {
     final count = _selected.length;
@@ -258,21 +225,13 @@ class _CollectionScreenState extends State<CollectionScreen> {
       );
     }
 
-    final valueLabel = _selectedValueLabel();
     return AppBar(
       leading: IconButton(
         icon: const Icon(Icons.close),
         tooltip: 'Batalkan pilihan',
         onPressed: _clearSelection,
       ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('${_selected.length} dipilih'),
-          if (valueLabel != null)
-            Text(valueLabel, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
+      title: Text('${_selected.length} dipilih'),
       actions: [
         IconButton(
           icon: const Icon(Icons.delete_outline),

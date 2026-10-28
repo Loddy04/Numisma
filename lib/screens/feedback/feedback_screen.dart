@@ -22,6 +22,9 @@ class FeedbackScreen extends StatefulWidget {
 }
 
 class _FeedbackScreenState extends State<FeedbackScreen> {
+  // Batas panjang tiap kolom (saran dan kesan), dalam karakter.
+  static const maxTextLength = 1000;
+
   final _authService = AuthService();
   final _repo = FeedbackRepo();
   final _saranController = TextEditingController();
@@ -192,6 +195,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           controller: _saranController,
           minLines: 2,
           maxLines: 4,
+          maxLength: maxTextLength,
           onChanged: (_) {
             if (_textError) setState(() => _textError = false);
           },
@@ -206,6 +210,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           controller: _kesanController,
           minLines: 2,
           maxLines: 4,
+          maxLength: maxTextLength,
           onChanged: (_) {
             if (_textError) setState(() => _textError = false);
           },
