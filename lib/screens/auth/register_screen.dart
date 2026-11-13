@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../theme.dart';
+import '../../warna_widget.dart';
 import '../../widgets/gradient_button.dart';
 import 'auth_widgets.dart';
 
@@ -83,14 +84,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: ok ? AppColors.chipOk : AppColors.chipOff,
+        color: ok
+            ? WarnaWidget.authSyaratOkLatar
+            : WarnaWidget.authSyaratBelumLatar,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (ok) ...[
-            const Icon(Icons.check, size: 16, color: AppColors.chipOkText),
+            const Icon(
+              Icons.check,
+              size: 16,
+              color: WarnaWidget.authSyaratOkTeks,
+            ),
             const SizedBox(width: 5),
           ],
           Text(
@@ -98,7 +105,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: ok ? AppColors.chipOkText : AppColors.chipOffText,
+              color: ok
+                  ? WarnaWidget.authSyaratOkTeks
+                  : WarnaWidget.authSyaratBelumTeks,
             ),
           ),
         ],
@@ -138,7 +147,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppGradients.page),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              WarnaWidget.authLembarAtas,
+              WarnaWidget.authLembarBawah,
+            ],
+          ),
+        ),
         child: SafeArea(
           child: Form(
             key: _formKey,
@@ -160,18 +178,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       children: [
                         GradientButton(
                           label: 'Daftar',
+                          colors: const [
+                            WarnaWidget.authTombolGradasiAtas,
+                            WarnaWidget.authTombolGradasiBawah,
+                          ],
                           loading: _isLoading,
                           onPressed: _isLoading ? null : _handleRegister,
                         ),
                         const SizedBox(height: 12),
-                        Text(
+                        const Text(
                           'Password disimpan sebagai hash bcrypt. '
                           'Email disimpan terenkripsi.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 13,
                             height: 1.4,
-                            color: AppColors.ink.withValues(alpha: 0.55),
+                            color: WarnaWidget.authCatatan,
                           ),
                         ),
                       ],
@@ -193,9 +215,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Row(
           children: [
             Material(
-              color: AppColors.card,
+              color: WarnaWidget.authTombolKembaliLatar,
               shape: const CircleBorder(
-                side: BorderSide(color: AppColors.cardBorder),
+                side: BorderSide(color: WarnaWidget.authTombolKembaliGaris),
               ),
               child: InkWell(
                 customBorder: const CircleBorder(),
@@ -203,28 +225,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: const SizedBox(
                   width: 44,
                   height: 44,
-                  child: Icon(Icons.chevron_left, color: AppColors.bronze),
+                  child: Icon(
+                    Icons.chevron_left,
+                    color: WarnaWidget.authTombolKembaliIkon,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 14),
             Text(
               'Daftar',
-              style: AppText.serif(size: 32, weight: FontWeight.w700),
+              style: AppText.serif(
+                size: 32,
+                weight: FontWeight.w700,
+                color: WarnaWidget.authJudul,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 14),
         Text(
           'Buat akun untuk menyimpan koleksimu. Daftar butuh internet.',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 15,
             height: 1.4,
-            color: AppColors.ink.withValues(alpha: 0.65),
+            color: WarnaWidget.authKeterangan,
           ),
         ),
         const SizedBox(height: 18),
-        const FieldLabel('Email'),
+        const FieldLabel('Email', color: WarnaWidget.authLabel),
         TextFormField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
@@ -242,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           },
         ),
         const SizedBox(height: 16),
-        const FieldLabel('Nama tampilan'),
+        const FieldLabel('Nama tampilan', color: WarnaWidget.authLabel),
         TextFormField(
           controller: _usernameController,
           maxLength: AuthService.maxNameLength,
@@ -259,7 +288,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           },
         ),
         const SizedBox(height: 16),
-        const FieldLabel('Password'),
+        const FieldLabel('Password', color: WarnaWidget.authLabel),
         TextFormField(
           controller: _passwordController,
           obscureText: _obscurePassword,
@@ -276,7 +305,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         _requirements(),
         const SizedBox(height: 16),
-        const FieldLabel('Konfirmasi password'),
+        const FieldLabel('Konfirmasi password', color: WarnaWidget.authLabel),
         TextFormField(
           controller: _confirmPasswordController,
           obscureText: _obscureConfirm,

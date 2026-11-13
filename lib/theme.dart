@@ -12,6 +12,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'warna_widget.dart';
+
 class AppColors {
   AppColors._();
 
@@ -84,7 +86,8 @@ class AppGradients {
   static const page = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [AppColors.creamTop, AppColors.creamBottom],
+    // Warnanya diatur di warna_widget.dart (BACKGROUND).
+    colors: [WarnaWidget.backgroundAtas, WarnaWidget.backgroundBawah],
   );
 
   // Cokelat tua ke perunggu: kartu hero, kepala halaman login, tombol utama.
@@ -147,7 +150,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: AppColors.creamTop,
+      scaffoldBackgroundColor: WarnaWidget.backgroundAtas,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.bronze,
         primary: AppColors.bronze,
@@ -158,14 +161,19 @@ class AppTheme {
       // AppBar menyatu dengan latar krem: judul serif tebal di kiri, ikon
       // cokelat, tanpa garis dan tanpa bayangan.
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.creamTop,
-        foregroundColor: AppColors.ink,
+        // Warna AppBar diatur di warna_widget.dart (APP BAR).
+        backgroundColor: WarnaWidget.appBarLatar,
+        foregroundColor: WarnaWidget.appBarJudul,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: AppColors.bronze),
-        titleTextStyle: AppText.serif(size: 24, weight: FontWeight.w700),
+        iconTheme: const IconThemeData(color: WarnaWidget.appBarIkon),
+        titleTextStyle: AppText.serif(
+          size: 24,
+          weight: FontWeight.w700,
+          color: WarnaWidget.appBarJudul,
+        ),
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: AppColors.bronze,

@@ -10,6 +10,7 @@ import '../../services/account_remote.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../../theme.dart';
+import '../../warna_widget.dart';
 import '../../widgets/gradient_button.dart';
 import 'auth_widgets.dart';
 import 'register_screen.dart';
@@ -152,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final media = MediaQuery.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.creamBottom,
+      backgroundColor: WarnaWidget.authLatarBelakang,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: SingleChildScrollView(
@@ -174,7 +175,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       24 + media.padding.bottom,
                     ),
                     decoration: const BoxDecoration(
-                      gradient: AppGradients.page,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          WarnaWidget.authLembarAtas,
+                          WarnaWidget.authLembarBawah,
+                        ],
+                      ),
                       borderRadius: BorderRadius.vertical(
                         top: Radius.circular(32),
                       ),
@@ -198,10 +206,14 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           Text(
             'Masuk',
-            style: AppText.serif(size: 32, weight: FontWeight.w700),
+            style: AppText.serif(
+              size: 32,
+              weight: FontWeight.w700,
+              color: WarnaWidget.authJudul,
+            ),
           ),
           const SizedBox(height: 20),
-          const FieldLabel('Email'),
+          const FieldLabel('Email', color: WarnaWidget.authLabel),
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
@@ -217,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
             },
           ),
           const SizedBox(height: 16),
-          const FieldLabel('Password'),
+          const FieldLabel('Password', color: WarnaWidget.authLabel),
           TextFormField(
             controller: _passwordController,
             obscureText: _obscurePassword,
@@ -244,6 +256,10 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 24),
           GradientButton(
             label: 'Masuk',
+            colors: const [
+              WarnaWidget.authTombolGradasiAtas,
+              WarnaWidget.authTombolGradasiBawah,
+            ],
             loading: _isLoading,
             onPressed: _isLoading ? null : _handleLogin,
           ),
@@ -254,11 +270,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Expanded(child: Divider()),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: Text(
+                  child: const Text(
                     'atau',
-                    style: TextStyle(
-                      color: AppColors.ink.withValues(alpha: 0.5),
-                    ),
+                    style: TextStyle(color: WarnaWidget.authPemisah),
                   ),
                 ),
                 const Expanded(child: Divider()),
@@ -267,6 +281,11 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 18),
             OutlinedButton.icon(
               onPressed: _isLoading ? null : _handleBiometricLogin,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: WarnaWidget.authSidikJariTeks,
+                backgroundColor: WarnaWidget.authSidikJariLatar,
+                side: const BorderSide(color: WarnaWidget.authSidikJariGaris),
+              ),
               icon: const Icon(Icons.fingerprint),
               label: const Text('Masuk dengan sidik jari'),
             ),
@@ -280,16 +299,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Text.rich(
                   TextSpan(
                     text: 'Belum punya akun? ',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 15,
-                      color: AppColors.ink.withValues(alpha: 0.65),
+                      color: WarnaWidget.authTautanTeks,
                     ),
                     children: const [
                       TextSpan(
                         text: 'Daftar',
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
-                          color: AppColors.bronze,
+                          color: WarnaWidget.authTautanAksen,
                         ),
                       ),
                     ],

@@ -14,6 +14,9 @@ class GradientButton extends StatelessWidget {
   final bool loading; // true = tampilkan lingkaran putar, bukan teks
   final IconData? icon; // ikon kecil di kiri teks (opsional)
   final double height;
+  // Dua warna gradasi (atas-kiri ke bawah-kanan). null = gradasi cokelat tema.
+  // Layar bisa menimpanya lewat warna_widget.dart.
+  final List<Color>? colors;
 
   const GradientButton({
     super.key,
@@ -22,6 +25,7 @@ class GradientButton extends StatelessWidget {
     this.loading = false,
     this.icon,
     this.height = 52,
+    this.colors,
   });
 
   @override
@@ -34,7 +38,13 @@ class GradientButton extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           borderRadius: radius,
-          gradient: AppGradients.brown,
+          gradient: colors == null
+              ? AppGradients.brown
+              : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: colors!,
+                ),
           boxShadow: AppShadows.soft,
         ),
         child: Material(

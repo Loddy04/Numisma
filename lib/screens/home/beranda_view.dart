@@ -14,6 +14,7 @@ import '../../core/format_util.dart';
 import '../../core/time_util.dart';
 import '../../models/event.dart';
 import '../../theme.dart';
+import '../../warna_widget.dart';
 import '../../widgets/app_logo.dart';
 
 class BerandaView extends StatelessWidget {
@@ -70,7 +71,7 @@ class BerandaView extends StatelessWidget {
   // Bayangan kartu hero: lebih pekat dan lebih lebar.
   static final _heroShadow = [
     BoxShadow(
-      color: AppColors.heroDark.withValues(alpha: 0.38),
+      color: WarnaWidget.berandaHeroBayangan,
       blurRadius: 28,
       spreadRadius: -6,
       offset: const Offset(0, 14),
@@ -92,7 +93,26 @@ class BerandaView extends StatelessWidget {
 
   // Garis tepi krem tua yang sangat tipis, supaya kartu putih terpisah halus
   // dari latar krem.
-  static final _cardBorder = Border.all(color: const Color(0xFFEADBC4));
+  static final _acaraBorder = Border.all(color: WarnaWidget.berandaAcaraGaris);
+  static final _menuBorder = Border.all(color: WarnaWidget.berandaMenuGaris);
+
+  // Bayangan kartu acara dan ubin menu (warnanya di warna_widget.dart).
+  static final _acaraShadow = [
+    BoxShadow(
+      color: WarnaWidget.berandaAcaraBayangan,
+      blurRadius: 22,
+      spreadRadius: -4,
+      offset: const Offset(0, 8),
+    ),
+  ];
+  static final _menuShadow = [
+    BoxShadow(
+      color: WarnaWidget.berandaMenuBayangan,
+      blurRadius: 22,
+      spreadRadius: -4,
+      offset: const Offset(0, 8),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -110,11 +130,11 @@ class BerandaView extends StatelessWidget {
             const SizedBox(height: 16),
             _heroCard(),
             const SizedBox(height: 18),
-            _sectionTitle('Acara terdekat'),
+            _sectionTitle('Acara terdekat', WarnaWidget.berandaJudulAcaraTerdekat),
             const SizedBox(height: 10),
             _eventCard(),
             const SizedBox(height: 18),
-            _sectionTitle('Menu'),
+            _sectionTitle('Menu', WarnaWidget.berandaJudulMenu),
             const SizedBox(height: 10),
             _menuGrid(),
           ],
@@ -123,8 +143,11 @@ class BerandaView extends StatelessWidget {
     );
   }
 
-  Widget _sectionTitle(String text) =>
-      Text(text, style: AppText.serif(size: 20, weight: FontWeight.w700));
+  // Warna judul seksi diatur di warna_widget.dart (BERANDA, Judul seksi).
+  Widget _sectionTitle(String text, Color color) => Text(
+    text,
+    style: AppText.serif(size: 20, weight: FontWeight.w700, color: color),
+  );
 
   // Logo dan nama aplikasi di kiri, foto profil di kanan. Foto hanya tampilan
   // (Profil dibuka lewat bottom nav).
@@ -136,7 +159,11 @@ class BerandaView extends StatelessWidget {
         Expanded(
           child: Text(
             'Numisma',
-            style: AppText.serif(size: 24, weight: FontWeight.w700),
+            style: AppText.serif(
+              size: 24,
+              weight: FontWeight.w700,
+              color: WarnaWidget.berandaNamaApp,
+            ),
           ),
         ),
         _avatar(),
@@ -152,15 +179,19 @@ class BerandaView extends StatelessWidget {
     final person = Container(
       width: size,
       height: size,
-      color: AppColors.gold.withValues(alpha: 0.5),
-      child: const Icon(Icons.person, size: 36, color: AppColors.bronze),
+      color: WarnaWidget.berandaFotoLatar,
+      child: const Icon(
+        Icons.person,
+        size: 36,
+        color: WarnaWidget.berandaFotoIkon,
+      ),
     );
     final path = photoPath;
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white,
+        color: WarnaWidget.berandaFotoBingkai,
         boxShadow: _softShadow,
       ),
       child: ClipOval(
@@ -196,7 +227,10 @@ class BerandaView extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppColors.heroDark, AppColors.heroLight],
+              colors: [
+                WarnaWidget.berandaHeroGradasiAtas,
+                WarnaWidget.berandaHeroGradasiBawah,
+              ],
             ),
           ),
           child: ClipRRect(
@@ -226,7 +260,7 @@ class BerandaView extends StatelessWidget {
                         style: AppText.serif(
                           size: 28,
                           weight: FontWeight.w800,
-                          color: Colors.white,
+                          color: WarnaWidget.berandaHeroNama,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -236,7 +270,7 @@ class BerandaView extends StatelessWidget {
                           fontSize: 11,
                           letterSpacing: 2,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFFE6CFA3),
+                          color: WarnaWidget.berandaHeroLabel,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -249,7 +283,7 @@ class BerandaView extends StatelessWidget {
                             style: AppText.serif(
                               size: 48,
                               weight: FontWeight.w700,
-                              color: Colors.white,
+                              color: WarnaWidget.berandaHeroAngka,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -285,7 +319,7 @@ class BerandaView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.18),
+        color: WarnaWidget.berandaHeroChipLatar,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
@@ -293,7 +327,7 @@ class BerandaView extends StatelessWidget {
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
-          color: Colors.white,
+          color: WarnaWidget.berandaHeroChipTeks,
         ),
       ),
     );
@@ -301,7 +335,7 @@ class BerandaView extends StatelessWidget {
 
   // Satu kartu putih: kotak tanggal emas, judul, jam dan tempat, dan chip
   // hitung mundur. Kosong = ajakan menambah acara.
-  Widget _eventCard() => _shadowed(20, _softShadow, _eventInk());
+  Widget _eventCard() => _shadowed(20, _acaraShadow, _eventInk());
 
   Widget _eventInk() {
     final next = nextEvent;
@@ -313,9 +347,9 @@ class BerandaView extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: WarnaWidget.berandaAcaraKartu,
             borderRadius: BorderRadius.circular(20),
-            border: _cardBorder,
+            border: _acaraBorder,
           ),
           child: next == null ? _emptyEvent() : _eventRow(next),
         ),
@@ -330,10 +364,13 @@ class BerandaView extends StatelessWidget {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: AppColors.tileActive,
+            color: WarnaWidget.berandaAcaraKosongLatarIkon,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(Icons.event_outlined, color: AppColors.bronze),
+          child: const Icon(
+            Icons.event_outlined,
+            color: WarnaWidget.berandaAcaraKosongIkon,
+          ),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -341,13 +378,13 @@ class BerandaView extends StatelessWidget {
             eventsLoaded
                 ? 'Belum ada acara. Ketuk untuk menambah.'
                 : 'Memuat acara…',
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
-              color: AppColors.ink.withValues(alpha: 0.7),
+              color: WarnaWidget.berandaAcaraKosongTeks,
             ),
           ),
         ),
-        const Icon(Icons.chevron_right, color: AppColors.ink),
+        const Icon(Icons.chevron_right, color: WarnaWidget.berandaAcaraPanah),
       ],
     );
   }
@@ -370,7 +407,10 @@ class BerandaView extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFEBD8AE), AppColors.gold],
+              colors: [
+                WarnaWidget.berandaAcaraTanggalAtas,
+                WarnaWidget.berandaAcaraTanggalBawah,
+              ],
             ),
           ),
           child: Column(
@@ -381,7 +421,7 @@ class BerandaView extends StatelessWidget {
                 style: AppText.serif(
                   size: 24,
                   weight: FontWeight.w700,
-                  color: AppColors.heroDark,
+                  color: WarnaWidget.berandaAcaraTanggalTeks,
                 ),
               ),
               Text(
@@ -390,7 +430,7 @@ class BerandaView extends StatelessWidget {
                   fontSize: 10,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.heroDark,
+                  color: WarnaWidget.berandaAcaraTanggalTeks,
                 ),
               ),
             ],
@@ -408,7 +448,7 @@ class BerandaView extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  color: WarnaWidget.berandaAcaraJudul,
                 ),
               ),
               const SizedBox(height: 2),
@@ -416,9 +456,9 @@ class BerandaView extends StatelessWidget {
                 when,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
-                  color: AppColors.ink.withValues(alpha: 0.65),
+                  color: WarnaWidget.berandaAcaraWaktu,
                 ),
               ),
               const SizedBox(height: 6),
@@ -428,7 +468,7 @@ class BerandaView extends StatelessWidget {
                   vertical: 3,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.tileActive,
+                  color: WarnaWidget.berandaAcaraChipLatar,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -436,14 +476,14 @@ class BerandaView extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.bronze,
+                    color: WarnaWidget.berandaAcaraChipTeks,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const Icon(Icons.chevron_right, color: AppColors.ink),
+        const Icon(Icons.chevron_right, color: WarnaWidget.berandaAcaraPanah),
       ],
     );
   }
@@ -465,7 +505,7 @@ class BerandaView extends StatelessWidget {
   }
 
   Widget _menuTile(_MenuItem item) =>
-      _shadowed(18, _softShadow, _menuInk(item));
+      _shadowed(18, _menuShadow, _menuInk(item));
 
   Widget _menuInk(_MenuItem item) {
     return Material(
@@ -480,15 +520,18 @@ class BerandaView extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.white, Color(0xFFFAF1E2)],
+              colors: [
+                WarnaWidget.berandaMenuGradasiAtas,
+                WarnaWidget.berandaMenuGradasiBawah,
+              ],
             ),
-            border: _cardBorder,
+            border: _menuBorder,
           ),
           // Ikon besar di tengah kartu, nama di bawahnya.
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(item.icon, size: 38, color: AppColors.bronze),
+              Icon(item.icon, size: 38, color: WarnaWidget.berandaMenuIkon),
               const SizedBox(height: 8),
               Text(
                 item.label,
@@ -499,7 +542,7 @@ class BerandaView extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   height: 1.2,
-                  color: AppColors.ink,
+                  color: WarnaWidget.berandaMenuTeks,
                 ),
               ),
             ],

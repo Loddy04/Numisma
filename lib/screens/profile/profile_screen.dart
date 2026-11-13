@@ -18,6 +18,7 @@ import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme.dart';
+import '../../warna_widget.dart';
 import '../../widgets/coin_rings.dart';
 import '../../widgets/soft_card.dart';
 import '../crop/crop_screen.dart';
@@ -212,15 +213,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.all(3),
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.gold,
+        color: WarnaWidget.profilFotoCincin,
       ),
       child: CircleAvatar(
         radius: radius,
-        backgroundColor: AppColors.creamBottom,
+        backgroundColor: WarnaWidget.profilFotoLatar,
         backgroundImage: image,
         onBackgroundImageError: image == null ? null : (_, _) {},
         child: image == null
-            ? const Icon(Icons.person, size: 72, color: AppColors.heroLight)
+            ? const Icon(
+                Icons.person,
+                size: 72,
+                color: WarnaWidget.profilFotoIkon,
+              )
             : null,
       ),
     );
@@ -239,9 +244,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           right: 2,
           bottom: 4,
           child: Material(
-            color: AppColors.gold,
+            color: WarnaWidget.profilKameraLatar,
             shape: const CircleBorder(
-              side: BorderSide(color: AppColors.creamTop, width: 2),
+              side: BorderSide(color: WarnaWidget.profilKameraGaris, width: 2),
             ),
             child: InkWell(
               customBorder: const CircleBorder(),
@@ -251,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Icon(
                   Icons.camera_alt_outlined,
                   size: 20,
-                  color: AppColors.heroDark,
+                  color: WarnaWidget.profilKameraIkon,
                 ),
               ),
             ),
@@ -269,7 +274,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       width: double.infinity,
       clipBehavior: Clip.hardEdge,
-      decoration: const BoxDecoration(gradient: AppGradients.brown),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            WarnaWidget.profilHeaderGradasiAtas,
+            WarnaWidget.profilHeaderGradasiBawah,
+          ],
+        ),
+      ),
       child: Stack(
         children: [
           const Positioned(top: -90, right: -70, child: CoinRings()),
@@ -281,10 +295,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Text(
                     'PROFIL',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
                       letterSpacing: 3,
-                      color: AppColors.creamTop.withValues(alpha: 0.85),
+                      color: WarnaWidget.profilHeaderLabel,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -298,7 +312,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: AppText.serif(
                       size: 36,
                       weight: FontWeight.w700,
-                      color: AppColors.creamTop,
+                      color: WarnaWidget.profilHeaderNama,
                     ),
                   ),
                 ],
@@ -321,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: const TextStyle(
               fontSize: 12,
               letterSpacing: 1.2,
-              color: AppColors.fieldLabel,
+              color: WarnaWidget.profilLabel,
             ),
           ),
           const SizedBox(height: 2),
@@ -329,7 +343,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 20),
+            style: const TextStyle(fontSize: 20, color: WarnaWidget.profilNilai),
           ),
         ],
       ),
@@ -342,7 +356,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Expanded(
       child: Row(
         children: [
-          Icon(icon, color: AppColors.bronze, size: 30),
+          Icon(icon, color: WarnaWidget.profilIkonKartu, size: 30),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -352,14 +366,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title,
                   style: const TextStyle(
                     fontSize: 18,
+                    color: WarnaWidget.profilJudulKartu,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 15,
-                    color: AppColors.ink.withValues(alpha: 0.6),
+                    color: WarnaWidget.profilSubjudulKartu,
                   ),
                 ),
               ],
@@ -400,6 +415,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   SoftCard(
+                    color: WarnaWidget.profilKartu,
                     radius: 28,
                     padding: cardPadding,
                     onTap: _editName,
@@ -410,7 +426,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           'Ubah',
                           style: TextStyle(
                             fontSize: 16,
-                            color: AppColors.bronze,
+                            color: WarnaWidget.profilAksi,
                           ),
                         ),
                       ],
@@ -418,16 +434,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   SoftCard(
+                    color: WarnaWidget.profilKartu,
                     radius: 28,
                     padding: cardPadding,
                     child: Row(
                       children: [
                         _labelValue('Email', _email),
-                        Text(
+                        const Text(
                           'tidak bisa diubah',
                           style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.ink.withValues(alpha: 0.55),
+                            color: WarnaWidget.profilKeterangan,
                           ),
                         ),
                       ],
@@ -435,6 +452,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   SoftCard(
+                    color: WarnaWidget.profilKartu,
                     radius: 28,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -449,6 +467,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         Switch(
                           value: user.biometricEnabled,
+                          activeTrackColor: WarnaWidget.profilSaklarAktif,
                           // null = switch nonaktif saat tidak tersedia/sibuk.
                           onChanged: (_biometricAvailable && !_biometricBusy)
                               ? _toggleBiometric
@@ -459,6 +478,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   SoftCard(
+                    color: WarnaWidget.profilKartu,
                     radius: 28,
                     padding: cardPadding,
                     child: Row(

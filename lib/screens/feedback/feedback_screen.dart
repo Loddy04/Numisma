@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/feedback_repo.dart';
 import '../../theme.dart';
+import '../../warna_widget.dart';
 import '../../widgets/field_label.dart';
 import '../../widgets/gradient_button.dart';
 import '../../widgets/soft_card.dart';
@@ -134,7 +135,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               child: Icon(
                 Icons.star_rounded,
                 size: size,
-                color: i <= value ? AppColors.gold : const Color(0xFFE6DCCD),
+                color: i <= value
+                    ? WarnaWidget.saranBintangAktif
+                    : WarnaWidget.saranBintangKosong,
               ),
             ),
           ),
@@ -146,13 +149,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     padding: const EdgeInsets.only(top: 6, left: 4),
     child: Text(
       text,
-      style: const TextStyle(fontSize: 12, color: AppColors.danger),
+      style: const TextStyle(fontSize: 12, color: WarnaWidget.saranGalat),
     ),
   );
 
   // Kartu penilaian: label di tengah dan lima bintang.
   Widget _buildRating() {
     return SoftCard(
+      color: WarnaWidget.saranKartu,
       radius: 28,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: SizedBox(
@@ -165,7 +169,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               style: TextStyle(
                 fontSize: 12,
                 letterSpacing: 1.4,
-                color: AppColors.fieldLabel,
+                color: WarnaWidget.saranLabel,
               ),
             ),
             const SizedBox(height: 14),
@@ -190,7 +194,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       children: [
         _buildRating(),
         const SizedBox(height: 18),
-        const FieldLabel('Saran'),
+        const FieldLabel('Saran', color: WarnaWidget.saranLabel),
         TextField(
           controller: _saranController,
           minLines: 2,
@@ -202,10 +206,13 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           decoration: appInput(
             hint: 'Apa saranmu untuk perkuliahan ini?',
             radius: 26,
+            fillColor: WarnaWidget.saranKolomIsi,
+            borderColor: WarnaWidget.saranKolomGaris,
+            focusColor: WarnaWidget.saranKolomGarisFokus,
           ),
         ),
         const SizedBox(height: 16),
-        const FieldLabel('Kesan'),
+        const FieldLabel('Kesan', color: WarnaWidget.saranLabel),
         TextField(
           controller: _kesanController,
           minLines: 2,
@@ -217,6 +224,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           decoration: appInput(
             hint: 'Apa kesanmu selama mengikuti kuliah ini?',
             radius: 26,
+            fillColor: WarnaWidget.saranKolomIsi,
+            borderColor: WarnaWidget.saranKolomGaris,
+            focusColor: WarnaWidget.saranKolomGarisFokus,
           ),
         ),
         if (_textError) _error('Isi saran atau kesan (boleh salah satu).'),
@@ -224,6 +234,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         GradientButton(
           label: 'Kirim',
           icon: Icons.send_outlined,
+          colors: const [
+            WarnaWidget.saranTombolGradasiAtas,
+            WarnaWidget.saranTombolGradasiBawah,
+          ],
           loading: _saving,
           onPressed: _saving ? null : _submit,
         ),
@@ -242,11 +256,18 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             style: const TextStyle(
               fontSize: 11,
               letterSpacing: 1.2,
-              color: AppColors.fieldLabel,
+              color: WarnaWidget.saranLabel,
             ),
           ),
           const SizedBox(height: 2),
-          Text(text, style: const TextStyle(fontSize: 15, height: 1.4)),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 15,
+              height: 1.4,
+              color: WarnaWidget.saranTeksRiwayat,
+            ),
+          ),
         ],
       ),
     );
@@ -254,6 +275,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: SoftCard(
+        color: WarnaWidget.saranKartu,
         radius: 24,
         padding: const EdgeInsets.all(16),
         child: SizedBox(
@@ -267,9 +289,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   _stars(e.rating, size: 16, gap: 2),
                   Text(
                     _formatDateTime(e.createdAt),
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
-                      color: AppColors.ink.withValues(alpha: 0.55),
+                      color: WarnaWidget.saranTanggalRiwayat,
                     ),
                   ),
                 ],
@@ -293,20 +315,27 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         // Judul "Saran & Kesan" dipasang HomeShell; di sini subjudulnya.
         Text(
           'Mata kuliah Pemrograman Aplikasi Mobile',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 16,
-            color: AppColors.ink.withValues(alpha: 0.6),
+            color: WarnaWidget.saranSubjudul,
           ),
         ),
         const SizedBox(height: 16),
         _buildForm(),
         const SizedBox(height: 26),
-        Text('Riwayat', style: AppText.serif(size: 24, weight: FontWeight.w700)),
+        Text(
+          'Riwayat',
+          style: AppText.serif(
+            size: 24,
+            weight: FontWeight.w700,
+            color: WarnaWidget.saranJudulRiwayat,
+          ),
+        ),
         const SizedBox(height: 12),
         if (_history.isEmpty)
-          Text(
+          const Text(
             'Belum ada kiriman.',
-            style: TextStyle(color: AppColors.ink.withValues(alpha: 0.6)),
+            style: TextStyle(color: WarnaWidget.saranKosong),
           )
         else
           for (final e in _history) _buildHistoryItem(e),

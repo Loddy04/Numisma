@@ -10,7 +10,9 @@ import '../theme.dart';
 
 class FieldLabel extends StatelessWidget {
   final String text;
-  const FieldLabel(this.text, {super.key});
+  // null = warna label tema (AppColors.fieldLabel).
+  final Color? color;
+  const FieldLabel(this.text, {super.key, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -18,11 +20,11 @@ class FieldLabel extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4, bottom: 6),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           letterSpacing: 1.2,
           fontWeight: FontWeight.w700,
-          color: AppColors.fieldLabel,
+          color: color ?? AppColors.fieldLabel,
         ),
       ),
     );
@@ -40,6 +42,10 @@ InputDecoration appInput({
   String? helper,
   String? counterText,
   double radius = 20,
+  // Opsional: menimpa warna tema (dipakai layar Saran lewat warna_widget.dart).
+  Color? fillColor,
+  Color? borderColor,
+  Color? focusColor,
 }) {
   OutlineInputBorder border(Color color, [double width = 1]) =>
       OutlineInputBorder(
@@ -50,11 +56,12 @@ InputDecoration appInput({
     hintText: hint,
     helperText: helper,
     counterText: counterText,
+    fillColor: fillColor,
     prefixIcon: icon == null ? null : Icon(icon),
     suffixIcon: suffix,
-    border: border(AppColors.cardBorder),
-    enabledBorder: border(AppColors.cardBorder),
-    focusedBorder: border(AppColors.bronze, 1.5),
+    border: border(borderColor ?? AppColors.cardBorder),
+    enabledBorder: border(borderColor ?? AppColors.cardBorder),
+    focusedBorder: border(focusColor ?? AppColors.bronze, 1.5),
     errorBorder: border(AppColors.danger),
     focusedErrorBorder: border(AppColors.danger, 1.5),
   );

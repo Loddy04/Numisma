@@ -15,6 +15,7 @@ import '../../services/event_repo.dart';
 import '../../services/notif_service.dart';
 import '../../services/sync_service.dart';
 import '../../theme.dart';
+import '../../warna_widget.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../auth/login_screen.dart';
 import '../chain/chain_screen.dart';
@@ -275,8 +276,8 @@ class _HomeShellState extends State<HomeShell> {
     bool active = false,
   }) {
     final color = active
-        ? AppColors.bronze
-        : AppColors.ink.withValues(alpha: 0.6);
+        ? WarnaWidget.navbarIkonAktif
+        : WarnaWidget.navbarIkonPasif;
     return Expanded(
       child: Center(
         child: InkWell(
@@ -285,7 +286,7 @@ class _HomeShellState extends State<HomeShell> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: active ? AppColors.tileActive : Colors.transparent,
+              color: active ? WarnaWidget.navbarIkonAktifLatar : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -321,7 +322,7 @@ class _HomeShellState extends State<HomeShell> {
 
     return Container(
       // Wilayah di sekitar kapsul memakai warna dasar gradasi Beranda.
-      color: AppColors.creamBottom,
+      color: WarnaWidget.navbarAreaSekitar,
       padding: EdgeInsets.fromLTRB(16, 0, 16, 10 + bottomInset),
       child: SizedBox(
         height: barHeight + lift,
@@ -331,11 +332,11 @@ class _HomeShellState extends State<HomeShell> {
             Container(
               height: barHeight,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: WarnaWidget.navbarLatar,
                 borderRadius: BorderRadius.circular(32),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.heroDark.withValues(alpha: 0.14),
+                    color: WarnaWidget.navbarBayangan,
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -377,7 +378,7 @@ class _HomeShellState extends State<HomeShell> {
                 padding: const EdgeInsets.all(4),
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.creamTop,
+                  color: WarnaWidget.navbarScanCincin,
                 ),
                 child: Material(
                   shape: const CircleBorder(),
@@ -389,7 +390,10 @@ class _HomeShellState extends State<HomeShell> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [AppColors.heroLight, AppColors.heroDark],
+                        colors: [
+                          WarnaWidget.navbarScanGradasiAtas,
+                          WarnaWidget.navbarScanGradasiBawah,
+                        ],
                       ),
                     ),
                     child: InkWell(
@@ -400,7 +404,7 @@ class _HomeShellState extends State<HomeShell> {
                         height: scanSize - 8,
                         child: Icon(
                           Icons.center_focus_strong_outlined,
-                          color: Colors.white,
+                          color: WarnaWidget.navbarScanIkon,
                           size: 28,
                         ),
                       ),
@@ -424,7 +428,7 @@ class _HomeShellState extends State<HomeShell> {
     // (BerandaView); Profil dan Saran memakai judul serif besar di badan layar
     // (tanpa AppBar), sama seperti layar Koleksi.
     return Scaffold(
-      backgroundColor: AppColors.creamBottom,
+      backgroundColor: WarnaWidget.backgroundBawah,
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.page),
         child: ownHeader
@@ -438,7 +442,11 @@ class _HomeShellState extends State<HomeShell> {
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                       child: Text(
                         _titles[_tab],
-                        style: AppText.serif(size: 36, weight: FontWeight.w700),
+                        style: AppText.serif(
+                          size: 36,
+                          weight: FontWeight.w700,
+                          color: WarnaWidget.saranJudul,
+                        ),
                       ),
                     ),
                     Expanded(child: _buildBody()),

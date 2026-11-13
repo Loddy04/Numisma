@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme.dart';
+import '../../warna_widget.dart';
 import '../../widgets/app_logo.dart';
 
 // FieldLabel dipindah ke widgets/field_label.dart; diekspor ulang supaya
@@ -28,7 +29,10 @@ class AuthHero extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.heroDark, AppColors.heroLight],
+          colors: [
+            WarnaWidget.authHeaderGradasiAtas,
+            WarnaWidget.authHeaderGradasiBawah,
+          ],
         ),
       ),
       child: Stack(
@@ -57,15 +61,15 @@ class AuthHero extends StatelessWidget {
                       style: AppText.serif(
                         size: 38,
                         weight: FontWeight.w700,
-                        color: AppColors.creamTop,
+                        color: WarnaWidget.authHeaderJudul,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
+                    const Text(
                       'Buku koleksi koin dan uang kertas',
                       style: TextStyle(
                         fontSize: 15,
-                        color: AppColors.creamTop.withValues(alpha: 0.85),
+                        color: WarnaWidget.authHeaderTagline,
                       ),
                     ),
                   ],
@@ -93,16 +97,21 @@ InputDecoration authInput({
         borderRadius: BorderRadius.circular(30),
         borderSide: BorderSide(color: color, width: width),
       );
+  // Warna kolom isian diatur di warna_widget.dart (LOGIN DAN DAFTAR).
   return InputDecoration(
     hintText: hint,
+    hintStyle: const TextStyle(color: WarnaWidget.authKolomHint),
+    fillColor: WarnaWidget.authKolomIsi,
     prefixIcon: Icon(icon),
+    prefixIconColor: WarnaWidget.authKolomIkon,
     suffixIcon: suffix,
+    suffixIconColor: WarnaWidget.authKolomIkon,
     counterText: counterText,
-    border: border(AppColors.cardBorder),
-    enabledBorder: border(AppColors.cardBorder),
-    focusedBorder: border(AppColors.bronze, 1.5),
-    errorBorder: border(AppColors.danger),
-    focusedErrorBorder: border(AppColors.danger, 1.5),
+    border: border(WarnaWidget.authKolomGaris),
+    enabledBorder: border(WarnaWidget.authKolomGaris),
+    focusedBorder: border(WarnaWidget.authKolomGarisFokus, 1.5),
+    errorBorder: border(WarnaWidget.authKolomGarisGalat),
+    focusedErrorBorder: border(WarnaWidget.authKolomGarisGalat, 1.5),
   );
 }
 
